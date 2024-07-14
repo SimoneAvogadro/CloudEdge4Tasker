@@ -1,0 +1,59 @@
+{
+  "IGNORE": {
+    "project_info": {
+      "project_id": "cloudedge-5d659",
+      "google_storage_bucket":"cloudedge-5d659.appspot.com"
+    },
+    "firebase_database_url": "https://cloudedge-5d659.firebaseio.com",
+    "google_app_id":"973182941492:android:284f46cdf2b4779e",
+    "google_api_key":"AIzaSyASz7Fo4491jy1gfdEiga6PXGF2qMpvPpQ",
+    "gcm_defaultSenderId":"973182941492",
+
+    "aaaaaaaaaaaaaaaaaaaaaaa": "bbbbbbbbbbbbbbbbb"
+  },
+
+  "project_info": {
+    "project_id": "cloudedge-5d659",
+    "project_number": "973182941492",
+    "name": "CloudEdge Tasker Plugin"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:973182941492:android:284f46cdf2b4779e",
+        "client_id": "android:online.avogadro.mearitaskerplugin",
+        "client_type": 1,
+        "android_client_info": {
+          "package_name": "online.avogadro.mearitaskerplugin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASz7Fo4491jy1gfdEiga6PXGF2qMpvPpQ"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 0
+        },
+        "cloud_messaging_service": {
+          "status": 2,
+          "apns_config": []
+        },
+        "appinvite_service": {
+          "status": 0,
+          "other_platform_oauth_client": []
+        },
+        "google_signin_service": {
+          "status": 0
+        },
+        "ads_service": {
+          "status": 0
+        }
+      }
+    }
+  ],
+  "client_info": [],
+  "ARTIFACT_VERSION": "1"
+}

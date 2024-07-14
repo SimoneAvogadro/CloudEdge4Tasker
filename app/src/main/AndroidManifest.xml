@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- TASKER PLUGIN -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
+    <application
+        android:name=".app.MeariApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/AppTheme">
+        <activity android:name=".user.BuyCloudServiceActivity"/>
+        <activity android:name=".user.CloudStatusActivity" />
+        <activity android:name=".device.DeviceCloudPlayActivity" />
+        <activity android:name=".device.DeviceMonitorActivity" />
+        <activity android:name=".device.DeviceSettingActivity" />
+        <activity android:name=".device.AddDeviceActivity" />
+        <activity android:name=".device.DeviceListActivity" />
+        <activity android:name=".user.RegisterActivity" />
+        <activity android:name=".user.LoginActivity" />
+        <activity android:name=".MainActivity" />
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Tasker plugin entry point -->
+        <activity
+            android:name=".tasker.ActivityConfigBasicAction"
+            android:exported="true"
+            android:icon="@mipmap/camera_play"
+            android:label="Enable camera's movement detection">
+            <intent-filter>
+                <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".tasker.ActivityConfigDisableAlarms"
+            android:exported="true"
+            android:icon="@mipmap/camera_pause"
+            android:label="Disable camera's movement detection">
+            <intent-filter>
+                <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".tasker.ActivityConfigEnableSirenAction"
+            android:exported="true"
+            android:icon="@mipmap/enable_siren"
+            android:label="Enable Siren Alarm on all cameras">
+            <intent-filter>
+                <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".tasker.ActivityConfigDisableSirenAction"
+            android:exported="true"
+            android:icon="@mipmap/disable_siren"
+            android:label="Disable Siren Alarm on all cameras">
+            <intent-filter>
+                <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".tasker.ActivityConfigDownloadLastCameraImageAction"
+            android:exported="true"
+            android:icon="@mipmap/image_download"
+            android:label="Retrieve last alert image from a camera">
+            <intent-filter>
+                <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
+            </intent-filter>
+        </activity>
+        <!--
+        <activity
+            android:name="com.braintreepayments.api.BraintreeBrowserSwitchActivity"
+            android:launchMode="singleTask"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="${applicationId}.braintree" />
+            </intent-filter>
+        </activity>
+        -->
+
+
+        <activity android:name=".tasker.events.ActivityConfigCameraAlarmEvent"
+            android:exported="true"
+            android:icon="@mipmap/enable_siren"
+            android:label="A camera has seen a person">
+            <intent-filter>
+                <action android:name="net.dinglisch.android.tasker.ACTION_EDIT_EVENT" />
+            </intent-filter>
+        </activity>
+
+
+                <meta-data
+                    android:name="MEARI_NETWORK"
+                    android:value="8"
+                    />
+
+        <service
+            android:name="org.eclipse.paho.android.service.MqttService"
+            android:priority="1000" />
+
+        <service    android:name=".app.MyFirebaseMessagingService"
+                    android:enabled="true"
+                    android:exported="false"
+                    android:directBootAware="true"
+            >
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
+        </service>
+
+
+        <receiver android:name=".tasker.events.AnyNotificationReceiver"
+            android:exported="true"
+            android:permission="com.google.android.c2dm.permission.SEND"
+            >
+            <intent-filter>
+                <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+                <!-- Add your app's package name as the category -->
+                <category android:name="com.meari.test" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

@@ -1,0 +1,101 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'com.google.gms.google-services'
+
+android {
+    compileSdkVersion 34
+    buildToolsVersion "30.0.3"
+    // viewBinding true
+    buildFeatures {
+        viewBinding true
+    }
+    defaultConfig {
+        applicationId "online.avogadro.mearitaskerplugin"
+        minSdkVersion 24
+        targetSdkVersion 33
+        versionCode 432
+        versionName "4.3.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        multiDexEnabled = true
+
+        ndk {
+            //选择要添加的对应 cpu 类型的 .so 库。还可以添加 'x86', 'x86_64', 'mips', 'mips64', 'armeabi-v7a', 'x86_64', 'x86'
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+    compileOptions {
+        sourceCompatibility = 17
+        targetCompatibility = 17
+    }
+    namespace 'online.avogadro.mearitaskerplugin'
+}
+
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: '../libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.1'
+    // implementation 'androidx.core:core-ktx:+'
+    implementation 'androidx.core:core-ktx:1.13.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    // aar required
+    implementation(name: 'core-sdk-device-500-20230717', ext: 'aar') {
+        exclude group: 'org.eclipse.paho'
+    }
+    implementation(name: 'core-sdk-meari-500-20230717', ext: 'aar') {
+        exclude group: 'org.eclipse.paho'
+    }
+
+    implementation 'com.tencent:mmkv-static:1.0.23'
+    implementation 'com.squareup.okhttp3:okhttp:3.12.0'
+    implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
+    implementation 'com.alibaba:fastjson:1.1.67.android'
+    implementation 'com.google.code.gson:gson:2.10'
+    implementation 'com.google.zxing:core:3.3.3'
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
+    def aws_version = "2.16.13"
+    implementation("com.amazonaws:aws-android-sdk-iot:2.16.13")
+    // {
+    //     exclude group: 'org.eclipse.paho'
+    //}
+    implementation ("com.amazonaws:aws-android-sdk-mobile-client:$aws_version") { transitive = true }
+    implementation 'io.reactivex.rxjava2:rxjava:2.2.6'
+    implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
+
+    // others
+    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'com.github.bumptech.glide:glide:4.11.0'
+//    implementation(name: 'alipaySdk-15.6.8-20191021122514', ext: 'aar')
+//    implementation 'com.braintreepayments.api:braintree:2.14.2'
+
+    // Tasker plugin
+    implementation 'com.joaomgcd:taskerpluginlibrary:0.4.10'
+
+    // implementation 'com.google.firebase:firebase-core:21.1.1'
+    implementation 'com.google.firebase:firebase-messaging:23.4.1'
+    implementation 'com.google.firebase:firebase-messaging-directboot:23.4.1'
+    // implementation 'com.google.android.gms:play-services:12.0.1'
+    // implementation 'com.google.gms:google-services:4.4.0'
+
+}
