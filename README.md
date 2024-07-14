@@ -7,6 +7,8 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.5.0 - Initial public release
+
 Features:
 * Actions:
     * enable all cameras: they will send notifications and do any action you configured on them
@@ -19,7 +21,7 @@ Features:
 The detection settings for each camera must/may still be configured individually, so that some cameras will have high detection threasolds and detect only humans, whereas others might trigger on any movement detected from the PIR sensor
 
 Ideas for future improvements:
-* remove all the unused example codes from Meari SDK
+* remove all the unused example code from Meari SDK
 * allow taking an high-res picture from a camera
 * allow forcing the alarm sound to trigger on all the camera (e.g. distributed Alarm Siren)
 * allow enabling/disabling selectively a single camera
@@ -28,14 +30,19 @@ Ideas for future improvements:
 * This plugin stores your credentials to CloudEdge, even if encrypted: this is a known limitation
 
 IMPORTANT:
-* create a new account in the CloudEdge/ieGeek/Foaood/Ihoxtx cloud
-* share with that account the cameras you want to control via this plugin
-* otherwise it WILL NOT WORK
+* you MUST setup a SECONDARY CouldEdge account to use this plugin
+  * create a new account in the CloudEdge cloud
+  * share with that account the cameras you want to control via this plugin
+  * otherwise it WILL NOT WORK
+* this plugin works only CloudEdge app
+  * reset any camera from other compatible-brands and register them within the CloudEdge App
 
 Why?: because CloudEdge does not allow you to have the same user logged in from multiple device, so you need a dedicated user for this plugin, otherwise the first time you open the app this plugin will stop working
 
 
 HOW-TO use it:
+* register your cameras within the [CloudEdge app](https://play.google.com/store/apps/details?id=com.cloudedge.smarteye&hl=en) (even if from other compatible brands)
+* share the cameras with your SECONDARY account (see above)
 * install the APK (you can download it from the GitHub releases)
 * start it: so that it's registered and available to Tasker/Macrodroid
 * login with your SECONDAY (see above) CloudEdge account, you need to enter

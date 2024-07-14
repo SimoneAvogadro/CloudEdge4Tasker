@@ -105,7 +105,7 @@ public class DeviceListActivity extends AppCompatActivity {
 
 //        imgAdd = findViewById(R.id.img_add);
 //        imgAdd.setOnClickListener(v -> {
-//            new CamManager(DeviceListActivity.this).getLastAlertImage(109063372, new IDeviceAlarmMessagesCallback() {
+//            new CamManager(DeviceListActivity.this).getLastAlertImage(109063472, new IDeviceAlarmMessagesCallback() {
 //                @Override
 //                public void onSuccess(List<DeviceAlarmMessage> list, CameraInfo cameraInfo) {
 //                    // downloadAlertImagePreviews(list, cameraInfo);
