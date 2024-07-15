@@ -20,6 +20,7 @@ import com.meari.sdk.callback.ILogoutCallback;
 import com.meari.sdk.callback.IResultCallback;
 import com.meari.sdk.callback.IShareMessageCallback;
 import online.avogadro.mearitaskerplugin.R;
+import online.avogadro.mearitaskerplugin.SplashActivity;
 import online.avogadro.mearitaskerplugin.app.MeariApplication;
 import online.avogadro.mearitaskerplugin.app.SharedPreferencesHelper;
 import online.avogadro.mearitaskerplugin.user.LoginActivity;
@@ -195,7 +196,11 @@ public class DeviceListActivity extends AppCompatActivity {
             @Override
             public void onError(int i, String s) {
                 Log.w("tag", "--->i: " + i + "; s: " + s);
-                Toast.makeText(DeviceListActivity.this, R.string.toast_fail+" getData"+i+" s: "+s, Toast.LENGTH_LONG).show();
+                Toast.makeText(DeviceListActivity.this, "Failed to getData "+i+" s: "+s+" will re-login", Toast.LENGTH_LONG).show();
+                // Most common
+                Intent intent = new Intent(DeviceListActivity.this, SplashActivity.class);
+                startActivity(intent);
+                finish();
             }
         });
     }
