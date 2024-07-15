@@ -17,6 +17,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -85,6 +86,7 @@ public class DeviceMonitorActivity extends AppCompatActivity {
 //        cameraInfo.setBps(4010);
 //        getVideoId(cameraInfo);
 
+        ((TextView)findViewById(R.id.textCameraID)).setText("ID: "+cameraInfo.getDeviceID());
     }
 
     private void initView() {

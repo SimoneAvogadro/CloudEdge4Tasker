@@ -8,28 +8,38 @@
         android:layout_width="match_parent"
         android:layout_height="200dp"
         android:orientation="horizontal" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="16dp"
-        android:paddingBottom="16dp"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp">
+
         <ImageView
             android:id="@+id/img_mute"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:contentDescription="@null"
-            android:src="@drawable/btn_camera_preview_volume_selected"/>
+            android:src="@drawable/btn_camera_preview_volume_selected" />
+
         <ImageView
             android:id="@+id/img_speak"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:contentDescription="@null"
-            android:src="@drawable/ic_pronunciation_n"/>
+            android:src="@drawable/ic_pronunciation_n" />
+
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/textCameraID"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ID: " />
 
     <LinearLayout
         android:layout_width="match_parent"
