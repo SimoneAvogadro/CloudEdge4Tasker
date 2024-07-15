@@ -39,7 +39,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
     public void onBindViewHolder(@NonNull DeviceHolder holder, int position) {
         CameraInfo cameraInfo = deviceList.get(position);
         Glide.with(context).load(cameraInfo.getDeviceIcon()).into(holder.imgDeviceIcon);
-        holder.tvDeviceName.setText(cameraInfo.getDeviceName());
+        holder.tvDeviceName.setText(cameraInfo.getDeviceName()+ " - "+cameraInfo.getDeviceID());
         holder.deviceView.setOnClickListener(v -> {
             Intent intent = new Intent(context, DeviceMonitorActivity.class);
             Bundle bundle = new Bundle();
