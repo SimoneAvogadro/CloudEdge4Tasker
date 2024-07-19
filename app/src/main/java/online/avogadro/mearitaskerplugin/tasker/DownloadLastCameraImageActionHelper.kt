@@ -86,7 +86,7 @@ class DownloadLastCameraImageActionRunner : TaskerPluginRunnerAction<DownloadLas
             }
         })
 
-        latch.await(10, TimeUnit.SECONDS)
+        latch.await(30, TimeUnit.SECONDS)
 
         if (result.startsWith("error:")) {
             return TaskerPluginResultErrorWithOutput(-1,result)

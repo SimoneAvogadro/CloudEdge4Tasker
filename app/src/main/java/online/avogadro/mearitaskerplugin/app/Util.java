@@ -5,6 +5,10 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 
+import java.util.Calendar;
+import java.util.Date;
+import java.util.concurrent.TimeUnit;
+
 public class Util {
 
     public static String getMetadata(Context c, String key) {
@@ -30,5 +34,17 @@ public class Util {
         } catch (PackageManager.NameNotFoundException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static long getDaysBetween(Date date1, Date date2) {
+        long diffInMillies = Math.abs(date2.getTime() - date1.getTime());
+        return TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
+    }
+
+    public static Date sendDateBackOneDay(Date date) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        cal.add(Calendar.DATE, -1);
+        return cal.getTime();
     }
 }

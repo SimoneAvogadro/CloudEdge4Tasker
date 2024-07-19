@@ -24,6 +24,8 @@ import com.meari.sdk.callback.ILoginCallback;
 import com.meari.sdk.callback.ISetDeviceParamsCallback;
 import online.avogadro.mearitaskerplugin.app.MeariApplication;
 import online.avogadro.mearitaskerplugin.app.SharedPreferencesHelper;
+import online.avogadro.mearitaskerplugin.app.Util;
+
 import com.ppstrong.utils.MeariMediaUtil;
 
 import java.io.ByteArrayOutputStream;
@@ -205,14 +207,29 @@ public class CamManager {
      * @param res
      */
     public void getLastAlertImage(long cameraID, IDeviceAlarmMessagesCallback res) {
-        Date date = new Date();
+        getLastAlertImage(new Date(), cameraID, res);
+    }
+    /**
+     * Return the list of events coming from the camera, used to extract the event's image or other info
+     * Will return the download image's local path in CameraInfo.firmID
+     *
+     * @param cameraID
+     * @param res
+     */
+    public void getLastAlertImage(Date date, long cameraID, IDeviceAlarmMessagesCallback res) {
+        if (Util.getDaysBetween(new Date(),date)>10) { // don't look more then 10 days back
+            res.onError(-1, "list of events was empty, no event image available");
+            return;
+        }
+
         SimpleDateFormat DateFor = new SimpleDateFormat("yyyyMMdd");
         String dateNow= DateFor.format(date);
         MeariUser.getInstance().getAlertMsgWithVideo(cameraID, dateNow, "1", 1, 0, null, new IDeviceAlarmMessagesCallback() {
             @Override
             public void onSuccess(List<DeviceAlarmMessage> list, CameraInfo cameraInfo) {
                 if (list.isEmpty()) {
-                    res.onError(-1, "list of events was empty, no event image available");
+                    getLastAlertImage(Util.sendDateBackOneDay(date), cameraID, res);
+                    // res.onError(-1, "list of events was empty, no event image available");
                 } else {
                     downloadAlertImagePreviews(list, cameraInfo, new IDeviceAlarmMessagesCallback() {
                         @Override
