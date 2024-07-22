@@ -72,7 +72,7 @@ class TakePictureActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImage
         }
 
         val latch = CountDownLatch(1)
-        cm.takeAPicture(camID, object : MeariDeviceListener {
+        cm.takeAPicture(context, camID, object : MeariDeviceListener {
             override fun onSuccess(path: String) {
                 result = path
                 latch.countDown()

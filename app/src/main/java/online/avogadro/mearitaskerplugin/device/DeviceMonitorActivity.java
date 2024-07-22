@@ -544,6 +544,7 @@ public class DeviceMonitorActivity extends AppCompatActivity {
 
     private void screenshot() {
         String path = DOCUMENT_PATH + "/" + System.currentTimeMillis() + ".jpg";
+
         deviceController.snapshot(path, new MeariDeviceListener() {
             @Override
             public void onSuccess(String s) {
