@@ -136,22 +136,22 @@ public class DeviceListActivity extends AppCompatActivity {
 
         imageEnableDetection.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Enabling cameras...", Toast.LENGTH_LONG).show();
-            CamManager cm = new CamManager(DeviceListActivity.this);
+            CamManager cm = CamManager.get(DeviceListActivity.this);
             cm.enableAllCameras();
         });
         imageDisableDetection.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Disabling cameras...", Toast.LENGTH_LONG).show();
-            CamManager cm = new CamManager(DeviceListActivity.this);
+            CamManager cm = CamManager.get(DeviceListActivity.this);
             cm.disableAllCameras();
         });
         imageEnableSiren.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Enabling sirens...", Toast.LENGTH_LONG).show();
-            CamManager cm = new CamManager(DeviceListActivity.this);
+            CamManager cm = CamManager.get(DeviceListActivity.this);
             cm.enableAllCameraAlarms();
         });
         imageDisableSiren.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Disabling sirens...", Toast.LENGTH_LONG).show();
-            CamManager cm = new CamManager(DeviceListActivity.this);
+            CamManager cm = CamManager.get(DeviceListActivity.this);
             cm.disableAllCameraAlarms();
         });
 
@@ -199,6 +199,8 @@ public class DeviceListActivity extends AppCompatActivity {
                 Toast.makeText(DeviceListActivity.this, "Failed to getData "+i+" s: "+s+" will re-login", Toast.LENGTH_LONG).show();
                 // Most common
                 Intent intent = new Intent(DeviceListActivity.this, SplashActivity.class);
+                // no back
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
                 finish();
             }
