@@ -32,6 +32,7 @@ import com.meari.sdk.utils.MeariExecutors;
 import com.meari.sdk.utils.SdkUtils;
 import com.ppstrong.ppsplayer.CameraPlayer;
 import com.ppstrong.ppsplayer.CameraPlayerListener;
+import com.ppstrong.ppsplayer.PPSGLSurfaceView;
 import com.ppstrong.utils.MeariMediaUtil;
 
 import java.io.ByteArrayOutputStream;
@@ -269,7 +270,7 @@ public class CamManager {
         // deviceList.addAll(meariDevice.getNvrs());
     }
 
-    public void takeAPicture(String camera, MeariDeviceListener event) {
+    public void takeAPicture(Context context, String camera, MeariDeviceListener event) {
 
         loginAndInitList(new IDoSomething() {
 
@@ -288,10 +289,11 @@ public class CamManager {
                     return;
                 }
 
-                MeariDeviceController deviceController = new MyMeariDeviceController();
+                MeariDeviceController deviceController = new MeariDeviceController();
                 deviceController.setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setController(deviceController);
+
 
                 deviceController.startConnect(new MeariDeviceListener() {
                     @Override
@@ -300,7 +302,19 @@ public class CamManager {
                         String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath()+"/"+"CloudEdge4TaskerSnapshot"+System.currentTimeMillis()+".jpg";
 
                         // take snapshot
-                        deviceController.snapshot(path,event);
+                        PPSGLSurfaceView videoSurfaceView = new PPSGLSurfaceView(context, 320, 200);
+                        videoSurfaceView.takephoto(path, new CameraPlayerListener() {
+                            @Override
+                            public void PPSuccessHandler(String s) {
+                                event.onSuccess(path);
+                            }
+
+                            @Override
+                            public void PPFailureError(String s) {
+                                event.onFailed(s);
+                            }
+                        });
+                        // deviceController.snapshot(path,event);
                     }
 
                     @Override
