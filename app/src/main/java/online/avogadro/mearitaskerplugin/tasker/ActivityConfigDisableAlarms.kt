@@ -31,7 +31,7 @@ class DisableAlarmsRunner : TaskerPluginRunnerActionNoOutputOrInput() {
     override fun run(context: Context, input: TaskerInput<Unit>): TaskerPluginResult<Unit> {
         // Handler(Looper.getMainLooper()).post { Toast.makeText(context, "Basic", Toast.LENGTH_LONG).show() }
 
-        val cm = CamManager(context)
+        val cm = CamManager.get(context)
         cm.disableAllCameras()
 
         return TaskerPluginResultSucess()

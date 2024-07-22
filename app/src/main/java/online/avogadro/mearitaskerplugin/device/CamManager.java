@@ -26,6 +26,12 @@ import online.avogadro.mearitaskerplugin.app.MeariApplication;
 import online.avogadro.mearitaskerplugin.app.SharedPreferencesHelper;
 import online.avogadro.mearitaskerplugin.app.Util;
 
+import com.meari.sdk.listener.MeariDeviceListener;
+import com.meari.sdk.utils.Logger;
+import com.meari.sdk.utils.MeariExecutors;
+import com.meari.sdk.utils.SdkUtils;
+import com.ppstrong.ppsplayer.CameraPlayer;
+import com.ppstrong.ppsplayer.CameraPlayerListener;
 import com.ppstrong.utils.MeariMediaUtil;
 
 import java.io.ByteArrayOutputStream;
@@ -41,8 +47,45 @@ import java.util.List;
 
 public class CamManager {
 
+    class MyMeariDeviceController extends MeariDeviceController {
+        private CameraPlayer cameraPlayer2 = null;
+
+        public MyMeariDeviceController() {
+            super();
+            if (this.cameraPlayer2 == null) {
+                this.cameraPlayer2 = new CameraPlayer();
+            }
+        }
+        public void startConnect(String pwd, final MeariDeviceListener deviceListener) {
+            String connectString = SdkUtils.getConnectString(this.getCameraInfo(), pwd);
+            Logger.i("MyMeariDeviceController", "--->startConnect--object: " + this.toString() + "; string: " + SdkUtils.getConnectString(this.getCameraInfo()));
+            this.cameraPlayer2.connectIPC2(connectString, new CameraPlayerListener() {
+                public void PPSuccessHandler(final String successMsg) {
+                    Logger.i("MyMeariDeviceController", "--->startConnect--success--object: " + MyMeariDeviceController.this.toString() + "--" + successMsg);
+                    //MeariExecutors.runOnMainThread(new Runnable() {
+                    //    public void run() {
+                            deviceListener.onSuccess(successMsg);
+                    //    }
+                    //});
+                }
+
+                public void PPFailureError(String errorCode) {
+                    Logger.i("MyMeariDeviceController", "--->startConnect--failed--object: " + MyMeariDeviceController.this + "--" + errorCode);
+                    final String s = errorCode;
+                    // MeariExecutors.runOnMainThread(new Runnable() {
+                    //    public void run() {
+                            deviceListener.onFailed(s);
+                    //    }
+                    //});
+                }
+            });
+        }
+
+    }
+
     interface IDoSomething {
         public void doSomething(ISetDeviceParamsCallback then);
+        public String description();
     }
 
     List<CameraInfo> deviceList = new ArrayList<CameraInfo>();
@@ -50,6 +93,14 @@ public class CamManager {
 
     public CamManager(Context context) {
         this.context = context;
+    }
+
+    private static CamManager INSTANCE = null;
+    public static CamManager get(Context context) {
+        if (INSTANCE==null) {
+            INSTANCE=new CamManager(context);
+        }
+        return INSTANCE;
     }
 
     public void disableAllCameras() {
@@ -60,6 +111,11 @@ public class CamManager {
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
                 MeariUser.getInstance().setPirDetectionEnable(enableFlag ,then);
+            }
+
+            @Override
+            public String description() {
+                return "Disable movement detection";
             }
         });
     }
@@ -72,6 +128,11 @@ public class CamManager {
             public void doSomething(ISetDeviceParamsCallback then) {
                 MeariUser.getInstance().setPirDetectionEnable(enableFlag ,then);
             }
+
+            @Override
+            public String description() {
+                return "Enable movement detection";
+            }
         });
     }
 
@@ -82,6 +143,11 @@ public class CamManager {
                 // enableCameraSirenAlarm(true, then);
                 MeariUser.getInstance().setFloodCameraVoiceLightAlarmEnable(1, then); // enable alarm
             }
+
+            @Override
+            public String description() {
+                return "Enable alarm on detection";
+            }
         });
     }
 
@@ -91,6 +157,11 @@ public class CamManager {
             public void doSomething(ISetDeviceParamsCallback then) {
                 // enableCameraSirenAlarm(true, then);
                 MeariUser.getInstance().setFloodCameraVoiceLightAlarmEnable(0, then); // disable alarm
+            }
+
+            @Override
+            public String description() {
+                return "Disable alarm on detection";
             }
         });
     }
@@ -135,10 +206,38 @@ public class CamManager {
                 MeariUser.getInstance().getDeviceList(new IDevListCallback() {
                     @Override
                     public void onSuccess(MeariDevice meariDevice) {
-                        Log.d("tag", "--->i: ssss");
+                        Log.d("tag", "listDevices ok");
                         initList(meariDevice);
-                        // doSomethingOnCamera(0, whatToDo);
                         doSomethingOnAllCameras(whatToDo);
+                    }
+
+                    @Override
+                    public void onError(int i, String s) {
+                        Log.w("tag", "--->i: " + i + "; s: " + s);
+                        Toast.makeText(context, "Failed to enumerate cameras", Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(int i, String s) {
+                Log.w("tag", "Error --->i: " + i + "; s: " + s);
+                Toast.makeText(context, "Failed to apply action: "+s, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void loginAndInitList(IDoSomething whatToDo) {
+        loginWithStoredCredentials(new ILoginCallback() {
+            @Override
+            public void onSuccess(UserInfo userInfo) {
+                MeariUser.getInstance().getDeviceList(new IDevListCallback() {
+                    @Override
+                    public void onSuccess(MeariDevice meariDevice) {
+                        Log.d("tag", "listDevices ok");
+                        initList(meariDevice);
+
+                        whatToDo.doSomething(null);
                     }
 
                     @Override
@@ -170,6 +269,56 @@ public class CamManager {
         // deviceList.addAll(meariDevice.getNvrs());
     }
 
+    public void takeAPicture(String camera, MeariDeviceListener event) {
+
+        loginAndInitList(new IDoSomething() {
+
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                // extract camera info
+                CameraInfo cameraInfo = null;
+                for (CameraInfo ci: deviceList) {
+                    if (camera.equals(ci.getDeviceID())) {
+                        cameraInfo = ci;
+                        break;
+                    }
+                }
+                if (cameraInfo==null) {
+                    event.onFailed("CameraID not found: "+camera);
+                    return;
+                }
+
+                MeariDeviceController deviceController = new MyMeariDeviceController();
+                deviceController.setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setController(deviceController);
+
+                deviceController.startConnect(new MeariDeviceListener() {
+                    @Override
+                    public void onSuccess(String successMsg) {
+                        // build path
+                        String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath()+"/"+"CloudEdge4TaskerSnapshot"+System.currentTimeMillis()+".jpg";
+
+                        // take snapshot
+                        deviceController.snapshot(path,event);
+                    }
+
+                    @Override
+                    public void onFailed(String errorMsg) {
+                        event.onFailed(errorMsg);
+                    }
+                });
+
+            }
+            @Override
+            public String description() {
+                return "Take a picture";
+            }
+
+        });
+
+    }
+
     /**
      * Apply an action to the all the cameras in parallel
      * @param whatToDo action to apply to camera
@@ -188,6 +337,7 @@ public class CamManager {
                 @Override
                 public void onSuccess() {
                     Log.d("tag", "--->camera "+cameraInfo.getDeviceName()+" camera configuration success");
+                    Toast.makeText(context, whatToDo.description()+" on "+cameraInfo.getDeviceName(), Toast.LENGTH_LONG).show();
                 }
 
                 @Override
@@ -278,7 +428,7 @@ public class CamManager {
     void downloadAlertImagePreviews(List<DeviceAlarmMessage> list, CameraInfo cameraInfo, IDeviceAlarmMessagesCallback res) {
         Log.d("Devicelist", "AA " + list);
         // downloadAlertImagePreviews(list.get(0).getImageUrl());
-        DeviceAlarmMessage latest = list.get(0);
+       DeviceAlarmMessage latest = list.get(0);
         for (int i = 1; i < list.size(); i++) {
             if (Long.parseLong(list.get(i).getEventTime()) > Long.parseLong(latest.getEventTime())) {
                 latest = list.get(i);

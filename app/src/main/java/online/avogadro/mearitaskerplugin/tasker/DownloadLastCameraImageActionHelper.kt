@@ -64,7 +64,7 @@ class DownloadLastCameraImageActionRunner : TaskerPluginRunnerAction<DownloadLas
     override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<DownloadLastCameraImageOutput> {
         var result = ""
 
-        val cm = CamManager(context)
+        val cm = CamManager.get(context)
 
         var camID = input.regular.cameraID
         if (camID=="" || camID==null || camID.toLongOrNull()==null) {
