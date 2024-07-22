@@ -62,7 +62,7 @@ public class DeviceMonitorActivity extends AppCompatActivity {
 
     private int position = 0;// 0-preview; 1-playback;
 
-    public static final String DOCUMENT_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/xtest/media";
+    public static final String DOCUMENT_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Pictures";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

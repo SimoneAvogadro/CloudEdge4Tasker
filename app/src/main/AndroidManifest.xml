@@ -90,6 +90,15 @@
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".tasker.ActivityConfigTakePictureAction"
+            android:exported="true"
+            android:icon="@mipmap/image_download"
+            android:label="Takes a live picture from the camera">
+            <intent-filter>
+                <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
+            </intent-filter>
+        </activity>
         <!--
         <activity
             android:name="com.braintreepayments.api.BraintreeBrowserSwitchActivity"
