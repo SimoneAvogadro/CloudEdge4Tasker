@@ -23,7 +23,8 @@ public class AnyNotificationReceiver extends BroadcastReceiver {
         CameraAlarmInfo cai = new CameraAlarmInfo();
         cai.deviceName = intent.getExtras().getString("deviceName","<none>");
         cai.deviceID = intent.getExtras().getString("deviceID","-1");
-        CameraAlarmRaiser.INSTANCE.raiseAlarmEvent(MeariApplication.getInstance(), cai);
+        if (!"-1".equals(cai.deviceID)) // no notification if we don't know which camera triggered
+            CameraAlarmRaiser.INSTANCE.raiseAlarmEvent(MeariApplication.getInstance(), cai);
     }
 
     public static void listAllDeviceMessages() {

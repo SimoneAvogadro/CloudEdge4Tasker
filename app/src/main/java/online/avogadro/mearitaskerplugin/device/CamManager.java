@@ -333,6 +333,54 @@ public class CamManager {
 
     }
 
+    public void fireSirenAlarm(Context context, String camera, ISetDeviceParamsCallback event) {
+
+        loginAndInitList(new IDoSomething() {
+
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                // extract camera info
+                CameraInfo cameraInfo = null;
+                for (CameraInfo ci: deviceList) {
+                    if (camera.equals(ci.getDeviceID())) {
+                        cameraInfo = ci;
+                        break;
+                    }
+                }
+                if (cameraInfo==null) {
+                    event.onFailed(-1, "CameraID not found: "+camera);
+                    return;
+                }
+
+                MeariDeviceController deviceController = new MeariDeviceController();
+                deviceController.setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setController(deviceController);
+
+                MeariUser.getInstance().setFlightSirenEnable(1, new ISetDeviceParamsCallback() {
+                    @Override
+                    public void onSuccess() {
+                        event.onSuccess();
+                    }
+
+                    @Override
+                    public void onFailed(int i, String s) {
+                        event.onFailed(i, s);
+                    }
+                });
+
+
+            }
+            @Override
+            public String description() {
+                return "Start camera alarm siren";
+            }
+
+        });
+
+    }
+
+
     /**
      * Apply an action to the all the cameras in parallel
      * @param whatToDo action to apply to camera

@@ -35,7 +35,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         CameraAlarmInfo cai = new CameraAlarmInfo();
         cai.deviceName = (String)remoteMessage.getData().getOrDefault("deviceName","<none>");
         cai.deviceID = (String)remoteMessage.getData().getOrDefault("deviceID","-1");
-        CameraAlarmRaiser.INSTANCE.raiseAlarmEvent(getApplicationContext(), cai);
+        if (!"-1".equals(cai.deviceID)) // no notification if we don't know which camera triggered
+            CameraAlarmRaiser.INSTANCE.raiseAlarmEvent(getApplicationContext(), cai);
+
         // AnyNotificationReceiver.listAllDeviceMessages();
     }
 
