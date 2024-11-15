@@ -12,6 +12,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.meari.sdk.MeariDeviceController;
+import com.meari.sdk.MeariIotManager;
 import com.meari.sdk.MeariSmartSdk;
 import com.meari.sdk.MeariUser;
 import com.meari.sdk.bean.CameraInfo;
@@ -47,6 +48,8 @@ import java.util.Date;
 import java.util.List;
 
 public class CamManager {
+
+    public static final int DEVICE_LIST_RELOAD_TIMEOUT = 120000;
 
     class MyMeariDeviceController extends MeariDeviceController {
         private CameraPlayer cameraPlayer2 = null;
@@ -90,6 +93,9 @@ public class CamManager {
     }
 
     List<CameraInfo> deviceList = new ArrayList<CameraInfo>();
+
+    long deviceListLastReload = 0L;
+
     Context context;
 
     public CamManager(Context context) {
@@ -207,14 +213,14 @@ public class CamManager {
                 MeariUser.getInstance().getDeviceList(new IDevListCallback() {
                     @Override
                     public void onSuccess(MeariDevice meariDevice) {
-                        Log.d("tag", "listDevices ok");
+                        Log.d("CamManager", "listDevices ok");
                         initList(meariDevice);
                         doSomethingOnAllCameras(whatToDo);
                     }
 
                     @Override
                     public void onError(int i, String s) {
-                        Log.w("tag", "--->i: " + i + "; s: " + s);
+                        Log.w("CamManager", "--->i: " + i + "; s: " + s);
                         Toast.makeText(context, "Failed to enumerate cameras", Toast.LENGTH_LONG).show();
                     }
                 });
@@ -222,8 +228,32 @@ public class CamManager {
 
             @Override
             public void onError(int i, String s) {
-                Log.w("tag", "Error --->i: " + i + "; s: " + s);
+                Log.w("CamManager", "Error --->i: " + i + "; s: " + s);
                 Toast.makeText(context, "Failed to apply action: "+s, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void updateDeviceListAndDoSomething(IDoSomething whatToDo) {
+        if (!deviceList.isEmpty() && System.currentTimeMillis()<deviceListLastReload+ DEVICE_LIST_RELOAD_TIMEOUT){
+            Log.d("CamManager", "using cam list from cache");
+            whatToDo.doSomething(null);
+            return;
+        }
+
+        MeariUser.getInstance().getDeviceList(new IDevListCallback() {
+            @Override
+            public void onSuccess(MeariDevice meariDevice) {
+                Log.d("CamManager", "listDevices ok");
+                initList(meariDevice);
+
+                whatToDo.doSomething(null);
+            }
+
+            @Override
+            public void onError(int i, String s) {
+                Log.w("CamManager", "--->i: " + i + "; s: " + s);
+                Toast.makeText(context, "Failed to enumerate cameras", Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -232,26 +262,12 @@ public class CamManager {
         loginWithStoredCredentials(new ILoginCallback() {
             @Override
             public void onSuccess(UserInfo userInfo) {
-                MeariUser.getInstance().getDeviceList(new IDevListCallback() {
-                    @Override
-                    public void onSuccess(MeariDevice meariDevice) {
-                        Log.d("tag", "listDevices ok");
-                        initList(meariDevice);
-
-                        whatToDo.doSomething(null);
-                    }
-
-                    @Override
-                    public void onError(int i, String s) {
-                        Log.w("tag", "--->i: " + i + "; s: " + s);
-                        Toast.makeText(context, "Failed to enumerate cameras", Toast.LENGTH_LONG).show();
-                    }
-                });
+                updateDeviceListAndDoSomething(whatToDo);
             }
 
             @Override
             public void onError(int i, String s) {
-                Log.w("tag", "Error --->i: " + i + "; s: " + s);
+                Log.w("CamManager", "Error --->i: " + i + "; s: " + s);
                 Toast.makeText(context, "Failed to apply action: "+s, Toast.LENGTH_LONG).show();
             }
         });
@@ -268,6 +284,8 @@ public class CamManager {
         deviceList.addAll(meariDevice.getBatteryCameras());
         // deviceList.addAll(meariDevice.getFlightCameras());
         // deviceList.addAll(meariDevice.getNvrs());
+
+        deviceListLastReload = System.currentTimeMillis();
     }
 
     public void takeAPicture(Context context, String camera, MeariDeviceListener event) {
@@ -357,6 +375,16 @@ public class CamManager {
                 MeariUser.getInstance().setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setController(deviceController);
 
+                MeariIotManager.getInstance().init();
+                MeariIotManager.getInstance().wakeDevice(cameraInfo.getSnNum());
+                // wake device does not provide a feedback of when the device is ready
+                // so we don't know when it will be ready to start the siren...
+                try {
+                    Thread.sleep(10*1000);
+                } catch (InterruptedException e) {
+                    // ignore me, note really relevant
+                }
+
                 MeariUser.getInstance().setFlightSirenEnable(1, new ISetDeviceParamsCallback() {
                     @Override
                     public void onSuccess() {
@@ -398,13 +426,13 @@ public class CamManager {
             whatToDo.doSomething( new ISetDeviceParamsCallback() {
                 @Override
                 public void onSuccess() {
-                    Log.d("tag", "--->camera "+cameraInfo.getDeviceName()+" camera configuration success");
+                    Log.d("CamManager", "--->camera "+cameraInfo.getDeviceName()+" camera configuration success");
                     Toast.makeText(context, whatToDo.description()+" on "+cameraInfo.getDeviceName(), Toast.LENGTH_LONG).show();
                 }
 
                 @Override
                 public void onFailed(int i, String s) {
-                    Log.w("tag", "--->camera "+cameraInfo.getDeviceName()+" camera configuration failed "+s);
+                    Log.w("CamManager", "--->camera "+cameraInfo.getDeviceName()+" camera configuration failed "+s);
                     Toast.makeText(context, "Failed on "+cameraInfo.getDeviceName()+" : "+s, Toast.LENGTH_LONG).show();
                 }
             });
@@ -488,7 +516,7 @@ public class CamManager {
     }
 
     void downloadAlertImagePreviews(List<DeviceAlarmMessage> list, CameraInfo cameraInfo, IDeviceAlarmMessagesCallback res) {
-        Log.d("Devicelist", "AA " + list);
+        Log.d("CamManager", "downloadAlertImagePreviews DeviceList " + list);
         // downloadAlertImagePreviews(list.get(0).getImageUrl());
        DeviceAlarmMessage latest = list.get(0);
         for (int i = 1; i < list.size(); i++) {
@@ -527,7 +555,7 @@ public class CamManager {
             // decodeFile.recycle();
             return uri3;
         } catch (IOException fnfe) {
-            Log.d("aaa","bbb");
+            Log.d("CamManager","Failed to download preview",fnfe);
             return null;
         }
     }
