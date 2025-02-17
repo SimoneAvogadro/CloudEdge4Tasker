@@ -2,39 +2,95 @@ package online.avogadro.mearitaskerplugin.tasker
 import android.app.Activity
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
+import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerAction
 import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerActionNoOutputOrInput
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
+import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelper
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelperNoOutputOrInput
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigNoInput
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
+import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultErrorWithOutput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
+import com.meari.sdk.callback.ISetDeviceParamsCallback
+import online.avogadro.mearitaskerplugin.databinding.ActivityConfigDisableCameraPirBinding
 import online.avogadro.mearitaskerplugin.device.CamManager
 
-class DisableAlarmsHelper(config: TaskerPluginConfig<Unit>) : TaskerPluginConfigHelperNoOutputOrInput<DisableAlarmsRunner>(config) {
+class DisableAlarmsHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput, Unit, DisableAlarmsRunner>(config) {
     override val runnerClass: Class<DisableAlarmsRunner> get() = DisableAlarmsRunner::class.java
-    override fun addToStringBlurb(input: TaskerInput<Unit>, blurbBuilder: StringBuilder) {
+    override val inputClass = DownloadLastCameraImageInput::class.java
+    override val outputClass = Unit::class.java
+    override fun addToStringBlurb(input: TaskerInput<DownloadLastCameraImageInput>, blurbBuilder: StringBuilder) {
         // Disable PIR People detection on all cameras
         blurbBuilder.append("Disable People detection on all cameras")
     }
 }
 
-class ActivityConfigDisableAlarms : Activity(), TaskerPluginConfigNoInput {
+class ActivityConfigDisableAlarms : Activity(), TaskerPluginConfig<DownloadLastCameraImageInput> {
+
+    private lateinit var binding: ActivityConfigDisableCameraPirBinding
+
+    override fun assignFromInput(input: TaskerInput<DownloadLastCameraImageInput>) {
+        // Log.d("ActivityConfigDisableAlarms","assignFromInput")
+        if (input.regular.cameraID != null)
+            binding?.editCameraID?.setText(input.regular.cameraID);
+        else
+            binding?.editCameraID?.setText("*");
+    }
+
+    override val inputForTasker: TaskerInput<DownloadLastCameraImageInput> get() {
+        return TaskerInput<DownloadLastCameraImageInput>(DownloadLastCameraImageInput(binding?.editCameraID?.text?.toString()))
+    }
+
     override val context get() = applicationContext
     private val taskerHelper by lazy { DisableAlarmsHelper(this) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        taskerHelper.finishForTasker()
+        binding =  ActivityConfigDisableCameraPirBinding.inflate(layoutInflater)
+
+        binding.buttonOK.setOnClickListener { // Handle button click event
+            taskerHelper.finishForTasker()
+        }
+        setContentView(binding.root)
+        taskerHelper.onCreate()
     }
 }
 
-class DisableAlarmsRunner : TaskerPluginRunnerActionNoOutputOrInput() {
-    override fun run(context: Context, input: TaskerInput<Unit>): TaskerPluginResult<Unit> {
+class DisableAlarmsRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput, Unit>() {
+    override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<Unit> {
         // Handler(Looper.getMainLooper()).post { Toast.makeText(context, "Basic", Toast.LENGTH_LONG).show() }
-
+        var result = ""
         val cm = CamManager.get(context)
-        cm.disableAllCameras()
 
-        return TaskerPluginResultSucess()
+        // backward compatibility for actions configured before the new input parameter! (it was  input: TaskerInput<Unit>)
+        var cameraID: String? = ""
+        try {
+            cameraID = input.regular.cameraID;
+        } catch (e: Exception) {
+            // ignore
+        }
+
+        if (cameraID==null || "" == cameraID || "*" == cameraID)
+            cm.disableAllCameras()
+        else
+            cm.disableSingleCameraPIR(context,cameraID,object:
+                ISetDeviceParamsCallback {
+                override fun onSuccess() {
+                    result = "ok";
+                }
+
+                override fun onFailed(i: Int, s: String?) {
+                    Log.e("DisableAlarm Fail", "$i $s")
+                    result="error: "+s;
+                }
+
+            })
+
+        if (result.startsWith("error:")) {
+            return TaskerPluginResultErrorWithOutput(-1,result)
+        } else {
+            return TaskerPluginResultSucess()
+        }
     }
 }

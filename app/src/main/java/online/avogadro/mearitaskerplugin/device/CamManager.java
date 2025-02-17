@@ -51,6 +51,18 @@ public class CamManager {
 
     public static final int DEVICE_LIST_RELOAD_TIMEOUT = 120000;
 
+    ISetDeviceParamsCallback DO_NOTHING = new ISetDeviceParamsCallback() {
+        @Override
+        public void onSuccess() {
+            // nothing
+        }
+
+        @Override
+        public void onFailed(int i, String s) {
+            // nothing
+        }
+    };
+
     class MyMeariDeviceController extends MeariDeviceController {
         private CameraPlayer cameraPlayer2 = null;
 
@@ -237,7 +249,7 @@ public class CamManager {
     private void updateDeviceListAndDoSomething(IDoSomething whatToDo) {
         if (!deviceList.isEmpty() && System.currentTimeMillis()<deviceListLastReload+ DEVICE_LIST_RELOAD_TIMEOUT){
             Log.d("CamManager", "using cam list from cache");
-            whatToDo.doSomething(null);
+            whatToDo.doSomething(DO_NOTHING);
             return;
         }
 
@@ -247,7 +259,7 @@ public class CamManager {
                 Log.d("CamManager", "listDevices ok");
                 initList(meariDevice);
 
-                whatToDo.doSomething(null);
+                whatToDo.doSomething(DO_NOTHING);
             }
 
             @Override
@@ -347,6 +359,44 @@ public class CamManager {
                 return "Take a picture";
             }
 
+        });
+
+    }
+
+    public void disableSingleCameraPIR(Context context, String camera, ISetDeviceParamsCallback event) {
+        controlSingleCameraPIR(context,camera,0,event);
+    }
+    public void enableSingleCameraPIR(Context context, String camera, ISetDeviceParamsCallback event) {
+        controlSingleCameraPIR(context,camera,1,event);
+    }
+    private void controlSingleCameraPIR(Context context, String camera, int enableFlag, ISetDeviceParamsCallback event) {
+        loginAndInitList(new IDoSomething() {
+
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                // extract camera info
+                CameraInfo cameraInfo = null;
+                for (CameraInfo ci: deviceList) {
+                    if (camera.equals(ci.getDeviceID())) {
+                        cameraInfo = ci;
+                        break;
+                    }
+                }
+                if (cameraInfo==null) {
+                    if (event!=null)
+                        event.onFailed(-1, "CameraID not found: "+camera);
+                    return;
+                }
+                MeariDeviceController deviceController = new MeariDeviceController();
+                deviceController.setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setController(deviceController);
+                MeariUser.getInstance().setPirDetectionEnable(enableFlag ,then);
+            }
+            @Override
+            public String description() {
+                return "Disable camera PIR";
+            }
         });
 
     }
