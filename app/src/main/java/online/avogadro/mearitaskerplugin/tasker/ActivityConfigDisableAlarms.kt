@@ -14,6 +14,7 @@ import online.avogadro.mearitaskerplugin.device.CamManager
 class DisableAlarmsHelper(config: TaskerPluginConfig<Unit>) : TaskerPluginConfigHelperNoOutputOrInput<DisableAlarmsRunner>(config) {
     override val runnerClass: Class<DisableAlarmsRunner> get() = DisableAlarmsRunner::class.java
     override fun addToStringBlurb(input: TaskerInput<Unit>, blurbBuilder: StringBuilder) {
+        // Disable PIR People detection on all cameras
         blurbBuilder.append("Disable People detection on all cameras")
     }
 }

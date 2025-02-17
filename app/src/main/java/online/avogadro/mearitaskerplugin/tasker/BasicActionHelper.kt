@@ -15,6 +15,7 @@ import online.avogadro.mearitaskerplugin.device.CamManager
 class BasicActionHelper(config: TaskerPluginConfig<Unit>) : TaskerPluginConfigHelperNoOutputOrInput<BasicActionRunner>(config) {
     override val runnerClass: Class<BasicActionRunner> get() = BasicActionRunner::class.java
     override fun addToStringBlurb(input: TaskerInput<Unit>, blurbBuilder: StringBuilder) {
+        // Enable PIR People detection on all cameras
         blurbBuilder.append("On all cameras")
     }
 }
