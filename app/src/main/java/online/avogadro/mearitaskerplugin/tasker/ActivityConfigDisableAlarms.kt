@@ -68,7 +68,7 @@ class DisableAlarmsRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInpu
         try {
             cameraID = input.regular.cameraID;
         } catch (e: Exception) {
-            // ignore
+            // ignore, old config which did not come with an input
         }
 
         if (cameraID==null || "" == cameraID || "*" == cameraID)
