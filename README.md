@@ -11,7 +11,11 @@ V 1.6.0 - Improved features to simplify usage in automation scenario (Tasker/Mac
 
 * Actions:
     * download last alarm image: download the picture associated with the last alarm on a camera. Useful to [process it later with AI](https://github.com/SimoneAvogadro/HumanDetection4Tasker) to confirm alarm or not
-    * start siren alarm sound: tells to a single camera to start "screaming", useful if you want to coordinate multiple cameras to generate a sort of distributed siren (harder to take down)
+    * start siren alarm sound (experimental): tells to a single camera to start "screaming", useful if you want to coordinate multiple cameras to generate a sort of distributed siren (harder to take down)
+
+Note on the "start siren" feature:
+* this is still experimental: I've not yet found a reliable way to make this always happen 
+* siren activation has a 10 secs delay to enable camera wake-up: which is just a polite guestimate and sometimes may simply be not enough to allow camera to come online
 
 V 1.5.0 - Initial public release
 

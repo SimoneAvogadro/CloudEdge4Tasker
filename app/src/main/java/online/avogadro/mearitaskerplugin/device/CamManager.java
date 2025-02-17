@@ -386,6 +386,7 @@ public class CamManager {
                 }
 
                 MeariUser.getInstance().setFlightSirenEnable(1, new ISetDeviceParamsCallback() {
+                // MeariUser.getInstance().setLED(1, new ISetDeviceParamsCallback() {
                     @Override
                     public void onSuccess() {
                         event.onSuccess();
