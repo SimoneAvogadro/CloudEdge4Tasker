@@ -10,8 +10,9 @@ License: freely shared but still uncertain, see LICENSE for details
 V 1.6.0 - Improved features to simplify usage in automation scenario (Tasker/MacroDroid)
 
 * Actions:
-    * download last alarm image: download the picture associated with the last alarm on a camera. Useful to [process it later with AI](https://github.com/SimoneAvogadro/HumanDetection4Tasker) to confirm alarm or not
-    * start siren alarm sound (experimental): tells to a single camera to start "screaming", useful if you want to coordinate multiple cameras to generate a sort of distributed siren (harder to take down)
+    * ADDED: download last alarm image: download the picture associated with the last alarm on a camera. Useful to [process it later with AI](https://github.com/SimoneAvogadro/HumanDetection4Tasker) to confirm alarm or not
+    * ADDED: start siren alarm sound (experimental): tells to a single camera to start "screaming", useful if you want to coordinate multiple cameras to generate a sort of distributed siren (harder to take down)
+    * IMPROVED: movement detection enable/disable can now target a single camera (or all the cameras, as before)
 
 Note on the "start siren" feature:
 * this is still experimental: I've not yet found a reliable way to make this always happen 
