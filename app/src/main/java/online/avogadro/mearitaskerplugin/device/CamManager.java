@@ -386,7 +386,6 @@ public class CamManager {
                 }
 
                 MeariUser.getInstance().setFlightSirenEnable(1, new ISetDeviceParamsCallback() {
-                // MeariUser.getInstance().setLED(1, new ISetDeviceParamsCallback() {
                     @Override
                     public void onSuccess() {
                         event.onSuccess();
@@ -403,6 +402,63 @@ public class CamManager {
             @Override
             public String description() {
                 return "Start camera alarm siren";
+            }
+
+        });
+
+    }
+
+    public void turnOnLight(Context context, String camera, ISetDeviceParamsCallback event) {
+
+        loginAndInitList(new IDoSomething() {
+
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                // extract camera info
+                CameraInfo cameraInfo = null;
+                for (CameraInfo ci: deviceList) {
+                    if (camera.equals(ci.getDeviceID())) {
+                        cameraInfo = ci;
+                        break;
+                    }
+                }
+                if (cameraInfo==null) {
+                    event.onFailed(-1, "CameraID not found: "+camera);
+                    return;
+                }
+
+                MeariDeviceController deviceController = new MeariDeviceController();
+                deviceController.setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setController(deviceController);
+
+                MeariIotManager.getInstance().init();
+                MeariIotManager.getInstance().wakeDevice(cameraInfo.getSnNum());
+                // wake device does not provide a feedback of when the device is ready
+                // so we don't know when it will be ready to start the siren...
+                try {
+                    Thread.sleep(10*1000);
+                } catch (InterruptedException e) {
+                    // ignore me, note really relevant
+                }
+
+                MeariUser.getInstance().setFlightLightStatus(1, new ISetDeviceParamsCallback() {
+                    @Override
+                    public void onSuccess() {
+                        event.onSuccess();
+                    }
+
+                    @Override
+                    public void onFailed(int i, String s) {
+                        event.onFailed(i, s);
+                    }
+                });
+
+
+            }
+            @Override
+            public String description() {
+                return "Turn on camera light";
             }
 
         });
