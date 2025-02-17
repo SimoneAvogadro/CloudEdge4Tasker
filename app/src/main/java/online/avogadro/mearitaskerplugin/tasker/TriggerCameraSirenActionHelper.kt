@@ -21,12 +21,12 @@ import java.util.concurrent.TimeUnit
 import online.avogadro.mearitaskerplugin.databinding.ActivityConfigDownloadLastCameraImageBinding;
 import online.avogadro.mearitaskerplugin.databinding.ActivityConfigTriggerCameraSirenBinding
 
-class TriggerCameraSirenActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput,DownloadLastCameraImageOutput,TriggerSirenActionRunner>(config) {
+class TriggerCameraSirenActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput,Unit,TriggerSirenActionRunner>(config) {
     override val runnerClass: Class<TriggerSirenActionRunner> get() = TriggerSirenActionRunner::class.java
     override val inputClass = DownloadLastCameraImageInput::class.java
-    override val outputClass = DownloadLastCameraImageOutput::class.java
+    override val outputClass = Unit::class.java
     override fun addToStringBlurb(input: TaskerInput<DownloadLastCameraImageInput>, blurbBuilder: StringBuilder) {
-        blurbBuilder.append("Trigger siren ")
+        blurbBuilder.append(" ")
     }
 }
 
@@ -62,8 +62,8 @@ class ActivityConfigTriggerSirenAction : Activity(), TaskerPluginConfig<Download
     }
 }
 
-class TriggerSirenActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput,DownloadLastCameraImageOutput>() {
-    override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<DownloadLastCameraImageOutput> {
+class TriggerSirenActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput,Unit>() {
+    override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<Unit> {
         var result = ""
 
         val cm = CamManager.get(context)
@@ -88,7 +88,7 @@ class TriggerSirenActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImag
         if (result.startsWith("error:")) {
             return TaskerPluginResultErrorWithOutput(-1,result)
         } else {
-            return TaskerPluginResultSucess(DownloadLastCameraImageOutput(result))
+            return TaskerPluginResultSucess()
         }
     }
 }
