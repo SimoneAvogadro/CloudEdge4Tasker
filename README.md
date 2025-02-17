@@ -7,6 +7,12 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.6.0 - Improved features to simplify usage in automation scenario (Tasker/MacroDroid)
+
+* Actions:
+    * download last alarm image: download the picture associated with the last alarm on a camera. Useful to [process it later with AI](https://github.com/SimoneAvogadro/HumanDetection4Tasker) to confirm alarm or not
+    * start siren alarm sound: tells to a single camera to start "screaming", useful if you want to coordinate multiple cameras to generate a sort of distributed siren (harder to take down)
+
 V 1.5.0 - Initial public release
 
 Features:
@@ -18,7 +24,7 @@ Features:
 * Events/Triggers
     * Camera detection: will trigger the event when one of the enabled cameras has seen movement
 
-The detection settings for each camera must/may still be configured individually, so that some cameras will have high detection threasolds and detect only humans, whereas others might trigger on any movement detected from the PIR sensor
+The detection settings for each camera must/may still be configured individually, so that some cameras will have high detection thresholds and detect only humans, whereas others might trigger on any movement detected from the PIR sensor
 
 Ideas for future improvements:
 * remove all the unused example code from Meari SDK
