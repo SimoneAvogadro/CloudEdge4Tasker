@@ -10,6 +10,9 @@
 /captures
 .externalNativeBuild
 
+app/debug
+app/release
+
 .gradle/
 .idea/
 build/
