@@ -48,7 +48,7 @@ abstract class AbstractActivityConfigTurnOnLightAction : Activity(), TaskerPlugi
     }
 
     override val inputForTasker: TaskerInput<DownloadLastCameraImageInput>
-        get() = TaskerInput(DownloadLastCameraImageInput(binding.editCameraID.text.toString()))
+        get() = TaskerInput(DownloadLastCameraImageInput(binding.editCameraID.text.toString(), binding.editCameraID.hint.toString()))
 
     override val context: Context
         get() = applicationContext
@@ -102,8 +102,10 @@ abstract class AbstractActivityConfigTurnOnLightAction : Activity(), TaskerPlugi
                         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                             val selectedName = cameraNames[position]
                             val cameraId = cameraMap[selectedName]
-                            if (cameraId!=null)
+                            if (cameraId!=null) {
                                 binding.editCameraID.setText(cameraId)
+                                binding.editCameraID.setHint(selectedName)
+                            }
                         }
 
                         override fun onNothingSelected(parent: AdapterView<*>?) {

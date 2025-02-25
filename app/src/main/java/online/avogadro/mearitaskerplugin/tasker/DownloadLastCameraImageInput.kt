@@ -5,5 +5,6 @@ import com.joaomgcd.taskerpluginlibrary.input.TaskerInputRoot
 
 @TaskerInputRoot
 class DownloadLastCameraImageInput @JvmOverloads constructor(
-        @field:TaskerInputField("cameraID") var cameraID: String? = null
+        @field:TaskerInputField("cameraID") var cameraID: String? = null,
+        @field:TaskerInputField("cameraName") var cameraName: String? = null
 )
