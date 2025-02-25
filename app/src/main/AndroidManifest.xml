@@ -108,6 +108,16 @@
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
         </activity>
+        <!-- New Tasker plugin action for turning on camera light -->
+        <activity
+            android:name=".tasker.ActivityConfigTurnOnLightAction"
+            android:exported="true"
+            android:icon="@mipmap/flashlight"
+            android:label="Turn on camera light">
+            <intent-filter>
+                <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
+            </intent-filter>
+        </activity>
         <!--
         <activity
             android:name="com.braintreepayments.api.BraintreeBrowserSwitchActivity"
