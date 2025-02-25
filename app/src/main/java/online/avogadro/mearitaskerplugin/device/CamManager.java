@@ -100,7 +100,7 @@ public class CamManager {
 
     }
 
-    interface IDoSomething {
+    public static interface IDoSomething {
         public void doSomething(ISetDeviceParamsCallback then);
         public String description();
     }
@@ -121,6 +121,10 @@ public class CamManager {
             INSTANCE=new CamManager(context);
         }
         return INSTANCE;
+    }
+
+    public List<CameraInfo> getDeviceList() {
+        return deviceList;
     }
 
     public void disableAllCameras() {
@@ -271,7 +275,7 @@ public class CamManager {
         });
     }
 
-    private void loginAndInitList(IDoSomething whatToDo) {
+    public void loginAndInitList(IDoSomething whatToDo) {
         loginWithStoredCredentials(new ILoginCallback() {
             @Override
             public void onSuccess(UserInfo userInfo) {
