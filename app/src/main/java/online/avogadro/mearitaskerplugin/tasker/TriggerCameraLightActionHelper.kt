@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import com.joaomgcd.taskerpluginlibrary.SimpleResult
 import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerAction
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelper
@@ -18,7 +19,7 @@ import online.avogadro.mearitaskerplugin.device.CamManager
 import online.avogadro.mearitaskerplugin.databinding.ActivityConfigTriggerCameraLightBinding
 
 class TurnOnLightActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) :
-	TaskerPluginConfigHelper<DownloadLastCameraImageInput, Unit, TurnOnLightActionRunner>(config) {
+	TaskerPluginConfigHelper<DownloadLastCameraImageInput, Unit, TurnOnLightActionRunner>(config), HelperHolder {
     override val runnerClass: Class<TurnOnLightActionRunner>
         get() = TurnOnLightActionRunner::class.java
     override val inputClass = DownloadLastCameraImageInput::class.java
@@ -28,7 +29,16 @@ class TurnOnLightActionHelper(config: TaskerPluginConfig<DownloadLastCameraImage
     }
 }
 
-class ActivityConfigTurnOnLightAction : Activity(), TaskerPluginConfig<DownloadLastCameraImageInput> {
+class ActivityConfigTurnOnLightAction : AbstractActivityConfigTurnOnLightAction() {
+    override val taskerHelper by lazy { TurnOnLightActionHelper(this) }
+}
+
+interface HelperHolder {
+    fun finishForTasker(): SimpleResult
+    fun onCreate()
+}
+
+abstract class AbstractActivityConfigTurnOnLightAction : Activity(), TaskerPluginConfig<DownloadLastCameraImageInput> {
 
     private lateinit var binding: ActivityConfigTriggerCameraLightBinding
     private val cameraMap = mutableMapOf<String, String>() // Map camera name to ID
@@ -43,7 +53,7 @@ class ActivityConfigTurnOnLightAction : Activity(), TaskerPluginConfig<DownloadL
     override val context: Context
         get() = applicationContext
 
-    private val taskerHelper by lazy { TurnOnLightActionHelper(this) }
+    abstract val taskerHelper: HelperHolder
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,7 +90,7 @@ class ActivityConfigTurnOnLightAction : Activity(), TaskerPluginConfig<DownloadL
 
                     // Set up spinner adapter
                     val adapter = ArrayAdapter(
-                        this@ActivityConfigTurnOnLightAction,
+                        this@AbstractActivityConfigTurnOnLightAction,
                         android.R.layout.simple_spinner_item,
                         cameraNames
                     )

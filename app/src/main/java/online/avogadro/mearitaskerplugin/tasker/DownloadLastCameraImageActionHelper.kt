@@ -19,7 +19,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import online.avogadro.mearitaskerplugin.databinding.ActivityConfigDownloadLastCameraImageBinding;
 
-class DownloadLastCameraImageActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput,DownloadLastCameraImageOutput,DownloadLastCameraImageActionRunner>(config) {
+class DownloadLastCameraImageActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput,DownloadLastCameraImageOutput,DownloadLastCameraImageActionRunner>(config), HelperHolder {
     override val runnerClass: Class<DownloadLastCameraImageActionRunner> get() = DownloadLastCameraImageActionRunner::class.java
     override val inputClass = DownloadLastCameraImageInput::class.java
     override val outputClass = DownloadLastCameraImageOutput::class.java
@@ -28,7 +28,11 @@ class DownloadLastCameraImageActionHelper(config: TaskerPluginConfig<DownloadLas
     }
 }
 
-class ActivityConfigDownloadLastCameraImageAction : Activity(), TaskerPluginConfig<DownloadLastCameraImageInput> {
+class ActivityConfigDownloadLastCameraImageAction : AbstractActivityConfigTurnOnLightAction() {
+    override val taskerHelper by lazy { DownloadLastCameraImageActionHelper(this) }
+}
+
+class OLDActivityConfigDownloadLastCameraImageAction : Activity(), TaskerPluginConfig<DownloadLastCameraImageInput> {
 
     private lateinit var binding: ActivityConfigDownloadLastCameraImageBinding
 
