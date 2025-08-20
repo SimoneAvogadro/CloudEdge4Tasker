@@ -76,9 +76,11 @@ public class DeviceListActivity extends AppCompatActivity {
                     String accessId = MeariIotManager.getInstance().getAccessId();
                     if (accessId != null && !accessId.isEmpty()) {
                         Log.d("DeviceListActivity", "MeariIotManager ready after " + attempts + " attempts, accessId: " + accessId);
+                        setControlButtonsEnabled(true); // Enable buttons now that SDK is ready
                         getData(); // Load device data now that SDK is ready
                     } else if (attempts >= MAX_ATTEMPTS) {
                         Log.w("DeviceListActivity", "MeariIotManager timeout after " + attempts + " attempts, loading data anyway");
+                        setControlButtonsEnabled(true); // Enable buttons anyway (fallback)
                         getData(); // Fallback: load data anyway
                     } else {
                         Log.d("DeviceListActivity", "MeariIotManager not ready (attempt " + attempts + "/" + MAX_ATTEMPTS + "), checking again in 500ms...");
@@ -87,6 +89,7 @@ public class DeviceListActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     Log.w("DeviceListActivity", "Error checking MeariIotManager (attempt " + attempts + "), retrying in 500ms...", e);
                     if (attempts >= MAX_ATTEMPTS) {
+                        setControlButtonsEnabled(true); // Enable buttons anyway (fallback)
                         getData(); // Fallback: load data anyway
                     } else {
                         handler.postDelayed(this, 500);
@@ -129,6 +132,7 @@ public class DeviceListActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // setControlButtonsEnabled(true); // Enable buttons on resume (SDK should be ready)
         getData();
     }
 
@@ -176,6 +180,9 @@ public class DeviceListActivity extends AppCompatActivity {
         imageEnableSiren      = findViewById(R.id.imageEnableSiren);
         imageDisableSiren     = findViewById(R.id.imageDisableSiren);
 
+        // Initially disable all control buttons until SDK is ready
+        setControlButtonsEnabled(false);
+
         imageEnableDetection.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Enabling cameras...", Toast.LENGTH_LONG).show();
             CamManager cm = CamManager.get(DeviceListActivity.this);
@@ -199,6 +206,22 @@ public class DeviceListActivity extends AppCompatActivity {
 
         // getData() will be called by waitForMeariInitializationThenLoadData()
 
+    }
+
+    private void setControlButtonsEnabled(boolean enabled) {
+        float alpha = enabled ? 1.0f : 0.4f;
+        
+        imageEnableDetection.setEnabled(enabled);
+        imageEnableDetection.setAlpha(alpha);
+        
+        imageDisableDetection.setEnabled(enabled);
+        imageDisableDetection.setAlpha(alpha);
+        
+        imageEnableSiren.setEnabled(enabled);
+        imageEnableSiren.setAlpha(alpha);
+        
+        imageDisableSiren.setEnabled(enabled);
+        imageDisableSiren.setAlpha(alpha);
     }
 
 
