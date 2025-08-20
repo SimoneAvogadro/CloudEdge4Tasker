@@ -396,7 +396,7 @@ public class CamManager {
                 deviceController.setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setController(deviceController);
-                MeariUser.getInstance().setPirDetectionEnable(enableFlag ,then);
+                MeariUser.getInstance().setPirDetectionEnable(enableFlag ,event);
             }
             @Override
             public String description() {
@@ -404,6 +404,43 @@ public class CamManager {
             }
         });
 
+    }
+
+    public void enableSingleCameraAlarm(Context context, String camera, ISetDeviceParamsCallback event) {
+        controlSingleCameraAlarm(context, camera, 1, event);
+    }
+    
+    public void disableSingleCameraAlarm(Context context, String camera, ISetDeviceParamsCallback event) {
+        controlSingleCameraAlarm(context, camera, 0, event);
+    }
+    
+    private void controlSingleCameraAlarm(Context context, String camera, int enableFlag, ISetDeviceParamsCallback event) {
+        loginAndInitList(new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                CameraInfo cameraInfo = null;
+                for (CameraInfo ci: deviceList) {
+                    if (camera.equals(ci.getDeviceID())) {
+                        cameraInfo = ci;
+                        break;
+                    }
+                }
+                if (cameraInfo==null) {
+                    if (event!=null)
+                        event.onFailed(-1, "CameraID not found: "+camera);
+                    return;
+                }
+                MeariDeviceController deviceController = new MeariDeviceController();
+                deviceController.setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setCameraInfo(cameraInfo);
+                MeariUser.getInstance().setController(deviceController);
+                MeariUser.getInstance().setFloodCameraVoiceLightAlarmEnable(enableFlag, event);
+            }
+            @Override
+            public String description() {
+                return enableFlag == 1 ? "Enable camera alarm" : "Disable camera alarm";
+            }
+        });
     }
 
     public void fireSirenAlarm(Context context, String camera, ISetDeviceParamsCallback event) {
