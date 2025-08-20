@@ -1,6 +1,7 @@
 package online.avogadro.mearitaskerplugin.app;
 
 import android.app.Application;
+import android.util.Log;
 
 import com.meari.sdk.MeariSdk;
 import com.meari.sdk.MeariSmartSdk;
@@ -26,6 +27,8 @@ public class MeariApplication extends Application {
         MeariSmartSdk.partnerId=partnerIdS;
         MeariSdk.init(MeariApplication.this, partnerId, new MyMessageHandler());
         MeariSmartSdk.partnerId=partnerIdS;
+
+        Log.d("MeariApplication", "MeariSdk initialized with partnerId: " + partnerIdS);
 
         // meariLog.createlibrarylog();
         // meariLog.getInstance().setlevel(0);

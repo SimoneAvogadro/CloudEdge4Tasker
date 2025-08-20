@@ -46,6 +46,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
     @Override
     public void onBindViewHolder(@NonNull DeviceHolder holder, int position) {
         CameraInfo cameraInfo = deviceList.get(position);
+        Log.d("DeviceListAdapter", "onBindViewHolder called for: " + cameraInfo.getDeviceName());
 
 //        if (cameraInfo.getStatus()==0)
 //            Glide.with(context).load(cameraInfo.getDeviceIconGray()).into(holder.imgDeviceIcon);
@@ -57,7 +58,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
         deviceController.setCameraInfo(cameraInfo);
         MeariUser.getInstance().setCameraInfo(cameraInfo);
         MeariUser.getInstance().setController(deviceController);
-        MeariUser.getInstance().getDeviceParams(new IGetDeviceParamsCallback() {
+        MeariUser.getInstance().getDeviceParams(cameraInfo, new IGetDeviceParamsCallback() {
             @Override
             public void onSuccess(DeviceParams deviceParams) {
                 int pir = deviceParams.getPirDetEnable();
@@ -93,7 +94,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
 
             @Override
             public void onFailed(int i, String s) {
-                Log.d("DeviceListAdapter","Failed to get cam status: "+i+" "+s);
+                Log.d("DeviceListAdapter","Failed to get cam status: "+ cameraInfo.getDeviceName()+ " - code:"+i+" error:"+s);
             }
         });
 

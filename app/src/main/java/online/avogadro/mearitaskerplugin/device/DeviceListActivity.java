@@ -2,6 +2,8 @@ package online.avogadro.mearitaskerplugin.device;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -11,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.meari.sdk.MeariIotManager;
 import com.meari.sdk.MeariUser;
 import com.meari.sdk.bean.CameraInfo;
 import com.meari.sdk.bean.MeariDevice;
@@ -46,14 +49,53 @@ public class DeviceListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
         setContentView(R.layout.activity_device_list);
-
         initView();
-
+        
         // Connect mqtt service
         MeariUser.getInstance().connectMqttServer(MeariApplication.getInstance());
-
+        
+        // Wait for MeariIotManager before loading data
+        waitForMeariInitializationThenLoadData();
+        
         acceptNewShares();
+    }
+
+    private void waitForMeariInitializationThenLoadData() {
+        Handler handler = new Handler(Looper.getMainLooper());
+        
+        Runnable checkInitialization = new Runnable() {
+            private int attempts = 0;
+            private final int MAX_ATTEMPTS = 20; // 10 seconds max wait
+            
+            @Override
+            public void run() {
+                attempts++;
+                try {
+                    String accessId = MeariIotManager.getInstance().getAccessId();
+                    if (accessId != null && !accessId.isEmpty()) {
+                        Log.d("DeviceListActivity", "MeariIotManager ready after " + attempts + " attempts, accessId: " + accessId);
+                        getData(); // Load device data now that SDK is ready
+                    } else if (attempts >= MAX_ATTEMPTS) {
+                        Log.w("DeviceListActivity", "MeariIotManager timeout after " + attempts + " attempts, loading data anyway");
+                        getData(); // Fallback: load data anyway
+                    } else {
+                        Log.d("DeviceListActivity", "MeariIotManager not ready (attempt " + attempts + "/" + MAX_ATTEMPTS + "), checking again in 500ms...");
+                        handler.postDelayed(this, 500); // Check again in 500ms
+                    }
+                } catch (Exception e) {
+                    Log.w("DeviceListActivity", "Error checking MeariIotManager (attempt " + attempts + "), retrying in 500ms...", e);
+                    if (attempts >= MAX_ATTEMPTS) {
+                        getData(); // Fallback: load data anyway
+                    } else {
+                        handler.postDelayed(this, 500);
+                    }
+                }
+            }
+        };
+        
+        checkInitialization.run(); // Start checking immediately
     }
 
     private void acceptNewShares() {
@@ -155,7 +197,7 @@ public class DeviceListActivity extends AppCompatActivity {
             cm.disableAllCameraAlarms();
         });
 
-        getData();
+        // getData() will be called by waitForMeariInitializationThenLoadData()
 
     }
 
