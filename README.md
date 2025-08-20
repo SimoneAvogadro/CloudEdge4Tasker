@@ -7,6 +7,10 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.6.1 - Improved GUI to quickly enable/disable a single camera
+ * GUI:
+    * ADDED: clicking on the PIR status or Alarm status of a camera will change it directly from the main screen
+
 V 1.6.0 - Improved features to simplify usage in automation scenario (Tasker/MacroDroid)
 
 * Actions:
