@@ -74,14 +74,18 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
                     public void run() {
                         if (pir == 0) {
                             holder.imgDetectionStatus.setImageResource(R.mipmap.camera_pause);
+                            holder.imgDetectionStatus.setTag(false); // Cache PIR disabled state
                         } else {
                             holder.imgDetectionStatus.setImageResource(R.mipmap.camera_play);
+                            holder.imgDetectionStatus.setTag(true); // Cache PIR enabled state
                         }
 
                         if (s2 == 0) {
                             holder.imgAlarmStatus.setImageResource(R.mipmap.disable_siren);
+                            holder.imgAlarmStatus.setTag(false); // Cache alarm disabled state
                         } else {
                             holder.imgAlarmStatus.setImageResource(R.mipmap.enable_siren);
+                            holder.imgAlarmStatus.setTag(true); // Cache alarm enabled state
                         }
                     }
                 });
@@ -117,130 +121,114 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
         return deviceList.size();
     }
 
+    private boolean isDetectionEnabled(ImageView imageView) {
+        // Check current icon state to determine if PIR detection is enabled
+        if (imageView.getTag() != null) {
+            return (Boolean) imageView.getTag();
+        }
+        // Fallback: check drawable resource (less reliable but works)
+        return imageView.getDrawable() != null;
+    }
+
+    private boolean isAlarmEnabled(ImageView imageView) {
+        // Check current icon state to determine if alarm is enabled
+        if (imageView.getTag() != null) {
+            return (Boolean) imageView.getTag();
+        }
+        // Fallback: check drawable resource (less reliable but works)
+        return imageView.getDrawable() != null;
+    }
+
     private void togglePIRDetection(CameraInfo cameraInfo, DeviceHolder holder) {
         // Show loading state
         holder.imgDetectionStatus.setAlpha(0.5f);
         
+        // Get current state from icon cache (no API call needed!)
+        boolean currentlyEnabled = isDetectionEnabled(holder.imgDetectionStatus);
+        boolean shouldEnable = !currentlyEnabled;
+        
         CamManager camManager = CamManager.get(context);
         
-        // Get current state to determine toggle direction
-        MeariDeviceController deviceController = new MeariDeviceController();
-        deviceController.setCameraInfo(cameraInfo);
-        MeariUser.getInstance().setCameraInfo(cameraInfo);
-        MeariUser.getInstance().setController(deviceController);
-        
-        MeariUser.getInstance().getDeviceParams(new IGetDeviceParamsCallback() {
+        ISetDeviceParamsCallback toggleCallback = new ISetDeviceParamsCallback() {
             @Override
-            public void onSuccess(DeviceParams deviceParams) {
-                int currentPir = deviceParams.getPirDetEnable();
-                boolean shouldEnable = currentPir == 0;
-                
-                ISetDeviceParamsCallback toggleCallback = new ISetDeviceParamsCallback() {
-                    @Override
-                    public void onSuccess() {
-                        // Update UI on main thread
-                        holder.itemView.post(() -> {
-                            holder.imgDetectionStatus.setAlpha(1.0f);
-                            if (shouldEnable) {
-                                holder.imgDetectionStatus.setImageResource(R.mipmap.camera_play);
-                                Toast.makeText(context, "PIR enabled for " + cameraInfo.getDeviceName(), Toast.LENGTH_SHORT).show();
-                            } else {
-                                holder.imgDetectionStatus.setImageResource(R.mipmap.camera_pause);
-                                Toast.makeText(context, "PIR disabled for " + cameraInfo.getDeviceName(), Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onFailed(int code, String error) {
-                        // Restore UI on main thread
-                        holder.itemView.post(() -> {
-                            holder.imgDetectionStatus.setAlpha(1.0f);
-                            Toast.makeText(context, "Failed to toggle PIR: " + error, Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                };
-                
-                // Call appropriate method
-                if (shouldEnable) {
-                    camManager.enableSingleCameraPIR(context, cameraInfo.getDeviceID(), toggleCallback);
-                } else {
-                    camManager.disableSingleCameraPIR(context, cameraInfo.getDeviceID(), toggleCallback);
-                }
-            }
-
-            @Override
-            public void onFailed(int i, String s) {
-                // Restore UI on main thread
+            public void onSuccess() {
+                // Update UI on main thread
                 holder.itemView.post(() -> {
                     holder.imgDetectionStatus.setAlpha(1.0f);
-                    Toast.makeText(context, "Failed to get device status", Toast.LENGTH_SHORT).show();
+                    if (shouldEnable) {
+                        holder.imgDetectionStatus.setImageResource(R.mipmap.camera_play);
+                        holder.imgDetectionStatus.setTag(true); // Cache new state
+                        Toast.makeText(context, "PIR enabled for " + cameraInfo.getDeviceName(), Toast.LENGTH_SHORT).show();
+                    } else {
+                        holder.imgDetectionStatus.setImageResource(R.mipmap.camera_pause);
+                        holder.imgDetectionStatus.setTag(false); // Cache new state
+                        Toast.makeText(context, "PIR disabled for " + cameraInfo.getDeviceName(), Toast.LENGTH_SHORT).show();
+                    }
                 });
             }
-        });
+
+            @Override
+            public void onFailed(int code, String error) {
+                // Restore UI on main thread - keep previous state
+                holder.itemView.post(() -> {
+                    holder.imgDetectionStatus.setAlpha(1.0f);
+                    Toast.makeText(context, "Failed to toggle PIR: " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        };
+        
+        // Call appropriate method based on current state
+        if (shouldEnable) {
+            camManager.enableSingleCameraPIR(context, cameraInfo.getDeviceID(), toggleCallback);
+        } else {
+            camManager.disableSingleCameraPIR(context, cameraInfo.getDeviceID(), toggleCallback);
+        }
     }
 
     private void toggleAlarmStatus(CameraInfo cameraInfo, DeviceHolder holder) {
         // Show loading state
         holder.imgAlarmStatus.setAlpha(0.5f);
         
+        // Get current state from icon cache (no API call needed!)
+        boolean currentlyEnabled = isAlarmEnabled(holder.imgAlarmStatus);
+        boolean shouldEnable = !currentlyEnabled;
+        
         CamManager camManager = CamManager.get(context);
         
-        // Get current state to determine toggle direction
-        MeariDeviceController deviceController = new MeariDeviceController();
-        deviceController.setCameraInfo(cameraInfo);
-        MeariUser.getInstance().setCameraInfo(cameraInfo);
-        MeariUser.getInstance().setController(deviceController);
-        
-        MeariUser.getInstance().getDeviceParams(new IGetDeviceParamsCallback() {
+        ISetDeviceParamsCallback toggleCallback = new ISetDeviceParamsCallback() {
             @Override
-            public void onSuccess(DeviceParams deviceParams) {
-                int currentAlarm = deviceParams.getSoundLightEnable();
-                boolean shouldEnable = currentAlarm == 0;
-                
-                ISetDeviceParamsCallback toggleCallback = new ISetDeviceParamsCallback() {
-                    @Override
-                    public void onSuccess() {
-                        // Update UI on main thread
-                        holder.itemView.post(() -> {
-                            holder.imgAlarmStatus.setAlpha(1.0f);
-                            if (shouldEnable) {
-                                holder.imgAlarmStatus.setImageResource(R.mipmap.enable_siren);
-                                Toast.makeText(context, "Alarm enabled for " + cameraInfo.getDeviceName(), Toast.LENGTH_SHORT).show();
-                            } else {
-                                holder.imgAlarmStatus.setImageResource(R.mipmap.disable_siren);
-                                Toast.makeText(context, "Alarm disabled for " + cameraInfo.getDeviceName(), Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onFailed(int code, String error) {
-                        // Restore UI on main thread
-                        holder.itemView.post(() -> {
-                            holder.imgAlarmStatus.setAlpha(1.0f);
-                            Toast.makeText(context, "Failed to toggle alarm: " + error, Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                };
-                
-                // Call appropriate method
-                if (shouldEnable) {
-                    camManager.enableSingleCameraAlarm(context, cameraInfo.getDeviceID(), toggleCallback);
-                } else {
-                    camManager.disableSingleCameraAlarm(context, cameraInfo.getDeviceID(), toggleCallback);
-                }
-            }
-
-            @Override
-            public void onFailed(int i, String s) {
-                // Restore UI on main thread
+            public void onSuccess() {
+                // Update UI on main thread
                 holder.itemView.post(() -> {
                     holder.imgAlarmStatus.setAlpha(1.0f);
-                    Toast.makeText(context, "Failed to get device status", Toast.LENGTH_SHORT).show();
+                    if (shouldEnable) {
+                        holder.imgAlarmStatus.setImageResource(R.mipmap.enable_siren);
+                        holder.imgAlarmStatus.setTag(true); // Cache new state
+                        Toast.makeText(context, "Alarm enabled for " + cameraInfo.getDeviceName(), Toast.LENGTH_SHORT).show();
+                    } else {
+                        holder.imgAlarmStatus.setImageResource(R.mipmap.disable_siren);
+                        holder.imgAlarmStatus.setTag(false); // Cache new state
+                        Toast.makeText(context, "Alarm disabled for " + cameraInfo.getDeviceName(), Toast.LENGTH_SHORT).show();
+                    }
                 });
             }
-        });
+
+            @Override
+            public void onFailed(int code, String error) {
+                // Restore UI on main thread - keep previous state
+                holder.itemView.post(() -> {
+                    holder.imgAlarmStatus.setAlpha(1.0f);
+                    Toast.makeText(context, "Failed to toggle alarm: " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        };
+        
+        // Call appropriate method based on current state
+        if (shouldEnable) {
+            camManager.enableSingleCameraAlarm(context, cameraInfo.getDeviceID(), toggleCallback);
+        } else {
+            camManager.disableSingleCameraAlarm(context, cameraInfo.getDeviceID(), toggleCallback);
+        }
     }
 
     class DeviceHolder extends RecyclerView.ViewHolder {
