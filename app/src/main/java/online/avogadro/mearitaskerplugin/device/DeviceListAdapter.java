@@ -30,10 +30,15 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
 
     private Context context;
     private List<CameraInfo> deviceList;
+    private boolean showCameraId = true;
 
     public DeviceListAdapter(Context context, List<CameraInfo> deviceList) {
         this.context = context;
         this.deviceList = deviceList;
+    }
+
+    public void setShowCameraId(boolean showCameraId) {
+        this.showCameraId = showCameraId;
     }
 
     @NonNull
@@ -52,7 +57,11 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
 //            Glide.with(context).load(cameraInfo.getDeviceIconGray()).into(holder.imgDeviceIcon);
 //        else
         Glide.with(context).load(cameraInfo.getDeviceIcon()).into(holder.imgDeviceIcon);
-        holder.tvDeviceName.setText(cameraInfo.getDeviceName()+ " - "+cameraInfo.getDeviceID());
+        if (showCameraId) {
+            holder.tvDeviceName.setText(cameraInfo.getDeviceName() + " - " + cameraInfo.getDeviceID());
+        } else {
+            holder.tvDeviceName.setText(cameraInfo.getDeviceName());
+        }
 
         MeariDeviceController deviceController = new MeariDeviceController();
         deviceController.setCameraInfo(cameraInfo);

@@ -85,6 +85,7 @@ dependencies {
     // others
     implementation 'androidx.multidex:multidex:2.0.1'
     implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.preference:preference:1.2.1'
     implementation 'com.github.bumptech.glide:glide:4.11.0'
 //    implementation(name: 'alipaySdk-15.6.8-20191021122514', ext: 'aar')
 //    implementation 'com.braintreepayments.api:braintree:2.14.2'

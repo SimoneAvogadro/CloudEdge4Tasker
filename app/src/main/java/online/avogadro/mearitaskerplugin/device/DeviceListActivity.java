@@ -1,18 +1,23 @@
 package online.avogadro.mearitaskerplugin.device;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import android.widget.Button;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.tabs.TabLayout;
 import com.meari.sdk.MeariIotManager;
 import com.meari.sdk.MeariUser;
 import com.meari.sdk.bean.CameraInfo;
@@ -30,45 +35,46 @@ import online.avogadro.mearitaskerplugin.user.LoginActivity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeSet;
 
 public class DeviceListActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
     private DeviceListAdapter adapter;
     private List<CameraInfo> deviceList;
-    private ImageView imgAdd;
+    private List<CameraInfo> filteredList;
 
     private ImageView imageEnableDetection;
     private ImageView imageDisableDetection;
     private ImageView imageEnableSiren;
     private ImageView imageDisableSiren;
+    private TabLayout tabLayout;
 
-
-    private Button buttonLogout;
+    private boolean prefGroupByFirstWord;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         setContentView(R.layout.activity_device_list);
         initView();
-        
+
         // Connect mqtt service
         MeariUser.getInstance().connectMqttServer(MeariApplication.getInstance());
-        
+
         // Wait for MeariIotManager before loading data
         waitForMeariInitializationThenLoadData();
-        
+
         acceptNewShares();
     }
 
     private void waitForMeariInitializationThenLoadData() {
         Handler handler = new Handler(Looper.getMainLooper());
-        
+
         Runnable checkInitialization = new Runnable() {
             private int attempts = 0;
             private final int MAX_ATTEMPTS = 20; // 10 seconds max wait
-            
+
             @Override
             public void run() {
                 attempts++;
@@ -76,29 +82,29 @@ public class DeviceListActivity extends AppCompatActivity {
                     String accessId = MeariIotManager.getInstance().getAccessId();
                     if (accessId != null && !accessId.isEmpty()) {
                         Log.d("DeviceListActivity", "MeariIotManager ready after " + attempts + " attempts, accessId: " + accessId);
-                        setControlButtonsEnabled(true); // Enable buttons now that SDK is ready
-                        getData(); // Load device data now that SDK is ready
+                        setControlButtonsEnabled(true);
+                        getData();
                     } else if (attempts >= MAX_ATTEMPTS) {
                         Log.w("DeviceListActivity", "MeariIotManager timeout after " + attempts + " attempts, loading data anyway");
-                        setControlButtonsEnabled(true); // Enable buttons anyway (fallback)
-                        getData(); // Fallback: load data anyway
+                        setControlButtonsEnabled(true);
+                        getData();
                     } else {
                         Log.d("DeviceListActivity", "MeariIotManager not ready (attempt " + attempts + "/" + MAX_ATTEMPTS + "), checking again in 500ms...");
-                        handler.postDelayed(this, 500); // Check again in 500ms
+                        handler.postDelayed(this, 500);
                     }
                 } catch (Exception e) {
                     Log.w("DeviceListActivity", "Error checking MeariIotManager (attempt " + attempts + "), retrying in 500ms...", e);
                     if (attempts >= MAX_ATTEMPTS) {
-                        setControlButtonsEnabled(true); // Enable buttons anyway (fallback)
-                        getData(); // Fallback: load data anyway
+                        setControlButtonsEnabled(true);
+                        getData();
                     } else {
                         handler.postDelayed(this, 500);
                     }
                 }
             }
         };
-        
-        checkInitialization.run(); // Start checking immediately
+
+        checkInitialization.run();
     }
 
     private void acceptNewShares() {
@@ -132,49 +138,30 @@ public class DeviceListActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // setControlButtonsEnabled(true); // Enable buttons on resume (SDK should be ready)
+        readPreferences();
+        adapter.setShowCameraId(PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean(SettingsActivity.PREF_SHOW_CAMERA_ID, true));
+        rebuildTabs();
         getData();
+    }
+
+    private void readPreferences() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefGroupByFirstWord = prefs.getBoolean(SettingsActivity.PREF_GROUP_BY_FIRST_WORD, false);
     }
 
     private void initView() {
         recyclerView = findViewById(R.id.recyclerView);
+        tabLayout = findViewById(R.id.tabLayout);
         deviceList = new ArrayList<>();
-        adapter = new DeviceListAdapter(this, deviceList);
+        filteredList = new ArrayList<>();
+        adapter = new DeviceListAdapter(this, filteredList);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(layoutManager);
 
-        // imgAdd.setOnClickListener(v -> {
-        //  Intent intent = new Intent(DeviceListActivity.this, AddDeviceActivity.class);
-        //    startActivity(intent);
-        //});
-
-//        imgAdd = findViewById(R.id.img_add);
-//        imgAdd.setOnClickListener(v -> {
-//            new CamManager(DeviceListActivity.this).getLastAlertImage(109063472, new IDeviceAlarmMessagesCallback() {
-//                @Override
-//                public void onSuccess(List<DeviceAlarmMessage> list, CameraInfo cameraInfo) {
-//                    // downloadAlertImagePreviews(list, cameraInfo);
-//                    // risultato in cameraInfo.firmID
-//                    Glide.with(MeariApplication.getInstance()).load(cameraInfo.getFirmID()).into(imgAdd);
-//                }
-//
-//                @Override
-//                public void onError(int i, String s) {
-//                    Log.d("DevicelistFail","AA "+i);
-//                }
-//            });
-//        });
-
-
-        // === TaskerPlugin ===
-        buttonLogout = findViewById(R.id.buttonLogout);
-        buttonLogout.setOnClickListener(v -> {
-            logout();
-        });
-
-        // ================== TaskerPlugin =================
+        // ================== Control buttons =================
         imageEnableDetection  = findViewById(R.id.imageEnableDetection);
         imageDisableDetection = findViewById(R.id.imageDisableDetection);
         imageEnableSiren      = findViewById(R.id.imageEnableSiren);
@@ -186,45 +173,72 @@ public class DeviceListActivity extends AppCompatActivity {
         imageEnableDetection.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Enabling cameras...", Toast.LENGTH_LONG).show();
             CamManager cm = CamManager.get(DeviceListActivity.this);
-            cm.enableAllCameras();
+            cm.enableAllCameras(new ArrayList<>(filteredList));
         });
         imageDisableDetection.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Disabling cameras...", Toast.LENGTH_LONG).show();
             CamManager cm = CamManager.get(DeviceListActivity.this);
-            cm.disableAllCameras();
+            cm.disableAllCameras(new ArrayList<>(filteredList));
         });
         imageEnableSiren.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Enabling sirens...", Toast.LENGTH_LONG).show();
             CamManager cm = CamManager.get(DeviceListActivity.this);
-            cm.enableAllCameraAlarms();
+            cm.enableAllCameraAlarms(new ArrayList<>(filteredList));
         });
         imageDisableSiren.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Disabling sirens...", Toast.LENGTH_LONG).show();
             CamManager cm = CamManager.get(DeviceListActivity.this);
-            cm.disableAllCameraAlarms();
+            cm.disableAllCameraAlarms(new ArrayList<>(filteredList));
         });
 
-        // getData() will be called by waitForMeariInitializationThenLoadData()
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                applyFilter((String) tab.getTag());
+            }
 
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) { }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) { }
+        });
     }
 
     private void setControlButtonsEnabled(boolean enabled) {
         float alpha = enabled ? 1.0f : 0.4f;
-        
+
         imageEnableDetection.setEnabled(enabled);
         imageEnableDetection.setAlpha(alpha);
-        
+
         imageDisableDetection.setEnabled(enabled);
         imageDisableDetection.setAlpha(alpha);
-        
+
         imageEnableSiren.setEnabled(enabled);
         imageEnableSiren.setAlpha(alpha);
-        
+
         imageDisableSiren.setEnabled(enabled);
         imageDisableSiren.setAlpha(alpha);
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_device_list, menu);
+        return true;
+    }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_settings) {
+            startActivity(new Intent(this, SettingsActivity.class));
+            return true;
+        } else if (id == R.id.action_logout) {
+            logout();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
 
     private void logout() {
         MeariUser.getInstance().logout(new ILogoutCallback() {
@@ -262,9 +276,7 @@ public class DeviceListActivity extends AppCompatActivity {
             public void onError(int i, String s) {
                 Log.w("tag", "--->i: " + i + "; s: " + s);
                 Toast.makeText(DeviceListActivity.this, "Failed to getData "+i+" s: "+s+" will re-login", Toast.LENGTH_LONG).show();
-                // Most common
                 Intent intent = new Intent(DeviceListActivity.this, SplashActivity.class);
-                // no back
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
                 finish();
@@ -274,18 +286,53 @@ public class DeviceListActivity extends AppCompatActivity {
 
     private void initList(MeariDevice meariDevice) {
         deviceList.clear();
-        // deviceList.addAll(meariDevice.getIpcs());
-        // deviceList.addAll(meariDevice.getDoorBells());
-        // if need
-        // deviceList.addAll(meariDevice.getChimes());
-        // deviceList.addAll(meariDevice.getVoiceBells());
         deviceList.addAll(meariDevice.getFourthGenerations());
         deviceList.addAll(meariDevice.getBatteryCameras());
-        // deviceList.addAll(meariDevice.getFlightCameras());
-        // deviceList.addAll(meariDevice.getNvrs());
 
+        rebuildTabs();
+    }
+
+    private void rebuildTabs() {
+        tabLayout.removeAllTabs();
+        if (prefGroupByFirstWord && !deviceList.isEmpty()) {
+            tabLayout.setVisibility(View.VISIBLE);
+
+            TreeSet<String> groups = new TreeSet<>();
+            for (CameraInfo ci : deviceList) {
+                groups.add(firstWord(ci));
+            }
+
+            TabLayout.Tab allTab = tabLayout.newTab().setText("ALL").setTag("ALL");
+            tabLayout.addTab(allTab);
+            for (String g : groups) {
+                tabLayout.addTab(tabLayout.newTab().setText(g).setTag(g));
+            }
+            // Apply current selection (ALL by default)
+            applyFilter("ALL");
+        } else {
+            tabLayout.setVisibility(View.GONE);
+            applyFilter("ALL");
+        }
+    }
+
+    private void applyFilter(String group) {
+        filteredList.clear();
+        if ("ALL".equals(group)) {
+            filteredList.addAll(deviceList);
+        } else {
+            for (CameraInfo ci : deviceList) {
+                if (group.equals(firstWord(ci))) {
+                    filteredList.add(ci);
+                }
+            }
+        }
         adapter.notifyDataSetChanged();
     }
-    
 
+    private static String firstWord(CameraInfo ci) {
+        String name = ci.getDeviceName();
+        if (name == null || name.isEmpty()) return "";
+        String[] parts = name.split(" ", 2);
+        return parts[0];
+    }
 }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".device.SettingsActivity">
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switchShowCameraId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/pref_show_camera_id" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switchGroupByFirstWord"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:minHeight="48dp"
+        android:text="@string/pref_group_by_first_word" />
+
+</LinearLayout>

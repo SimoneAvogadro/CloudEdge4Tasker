@@ -30,6 +30,7 @@
         <activity android:name=".device.DeviceSettingActivity" />
         <activity android:name=".device.AddDeviceActivity" />
         <activity android:name=".device.DeviceListActivity" />
+        <activity android:name=".device.SettingsActivity" />
         <activity android:name=".user.RegisterActivity" />
         <activity android:name=".user.LoginActivity" />
         <activity android:name=".MainActivity" />

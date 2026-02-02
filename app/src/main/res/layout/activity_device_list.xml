@@ -41,11 +41,12 @@
             android:src="@mipmap/disable_siren" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/buttonLogout"
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="-= Logout =-" />
+        android:visibility="gone"
+        app:tabMode="scrollable" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"

@@ -3,4 +3,9 @@
     <string name="com_user_name">账号</string>
     <string name="toast_success">成功</string>
     <string name="toast_fail">失败</string>
+    <string name="menu_logout">登出</string>
+    <string name="menu_settings">设置</string>
+    <string name="settings_title">设置</string>
+    <string name="pref_show_camera_id">显示摄像机ID</string>
+    <string name="pref_group_by_first_word">按首字分组</string>
 </resources>

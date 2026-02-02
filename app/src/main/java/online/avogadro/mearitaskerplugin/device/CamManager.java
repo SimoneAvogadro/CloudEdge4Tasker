@@ -127,6 +127,52 @@ public class CamManager {
         return deviceList;
     }
 
+    public void disableAllCameras(List<CameraInfo> cameras) {
+        int enableFlag = 0;
+        doSomethingOnCameras(cameras, new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                MeariUser.getInstance().setPirDetectionEnable(enableFlag, then);
+            }
+            @Override
+            public String description() { return "Disable movement detection"; }
+        });
+    }
+
+    public void enableAllCameras(List<CameraInfo> cameras) {
+        int enableFlag = 1;
+        doSomethingOnCameras(cameras, new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                MeariUser.getInstance().setPirDetectionEnable(enableFlag, then);
+            }
+            @Override
+            public String description() { return "Enable movement detection"; }
+        });
+    }
+
+    public void enableAllCameraAlarms(List<CameraInfo> cameras) {
+        doSomethingOnCameras(cameras, new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                MeariUser.getInstance().setFloodCameraVoiceLightAlarmEnable(1, then);
+            }
+            @Override
+            public String description() { return "Enable alarm on detection"; }
+        });
+    }
+
+    public void disableAllCameraAlarms(List<CameraInfo> cameras) {
+        doSomethingOnCameras(cameras, new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                MeariUser.getInstance().setFloodCameraVoiceLightAlarmEnable(0, then);
+            }
+            @Override
+            public String description() { return "Disable alarm on detection"; }
+        });
+    }
+
     public void disableAllCameras() {
         // getDataAndChangeState(false);
 
@@ -635,6 +681,35 @@ public class CamManager {
                 public void onFailed(int i, String s) {
                     Log.w("CamManager", "--->camera "+cameraInfo.getDeviceName()+" camera configuration failed "+s);
                     Toast.makeText(context, "Failed on "+cameraInfo.getDeviceName()+" : "+s, Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+    }
+
+    /**
+     * Apply an action to a specific list of cameras in parallel
+     * @param cameras list of cameras to act on
+     * @param whatToDo action to apply to each camera
+     */
+    private void doSomethingOnCameras(List<CameraInfo> cameras, IDoSomething whatToDo) {
+        for (CameraInfo cameraInfo : cameras) {
+            MeariDeviceController deviceController = new MeariDeviceController();
+            deviceController.setCameraInfo(cameraInfo);
+
+            MeariUser.getInstance().setCameraInfo(cameraInfo);
+            MeariUser.getInstance().setController(deviceController);
+
+            whatToDo.doSomething(new ISetDeviceParamsCallback() {
+                @Override
+                public void onSuccess() {
+                    Log.d("CamManager", "--->camera " + cameraInfo.getDeviceName() + " camera configuration success");
+                    Toast.makeText(context, whatToDo.description() + " on " + cameraInfo.getDeviceName(), Toast.LENGTH_LONG).show();
+                }
+
+                @Override
+                public void onFailed(int i, String s) {
+                    Log.w("CamManager", "--->camera " + cameraInfo.getDeviceName() + " camera configuration failed " + s);
+                    Toast.makeText(context, "Failed on " + cameraInfo.getDeviceName() + " : " + s, Toast.LENGTH_LONG).show();
                 }
             });
         }
