@@ -11,6 +11,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -123,6 +124,36 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
         // Add click listeners for alarm toggle
         holder.imgAlarmStatus.setOnClickListener(v -> {
             toggleAlarmStatus(cameraInfo, holder);
+        });
+
+        // Add click listener for firing siren alarm on single camera
+        holder.imgFireAlarm.setOnClickListener(v -> {
+            new AlertDialog.Builder(context)
+                    .setTitle("Fire siren?")
+                    .setMessage("Fire the siren on " + cameraInfo.getDeviceName() + "?")
+                    .setPositiveButton("Yes", (dialog, which) -> {
+                        holder.imgFireAlarm.setAlpha(0.5f);
+                        Toast.makeText(context, "Firing siren on " + cameraInfo.getDeviceName() + "...", Toast.LENGTH_SHORT).show();
+                        CamManager.get(context).fireSirenAlarm(context, cameraInfo.getDeviceID(), new ISetDeviceParamsCallback() {
+                            @Override
+                            public void onSuccess() {
+                                holder.itemView.post(() -> {
+                                    holder.imgFireAlarm.setAlpha(1.0f);
+                                    Toast.makeText(context, "Siren fired on " + cameraInfo.getDeviceName(), Toast.LENGTH_SHORT).show();
+                                });
+                            }
+
+                            @Override
+                            public void onFailed(int code, String error) {
+                                holder.itemView.post(() -> {
+                                    holder.imgFireAlarm.setAlpha(1.0f);
+                                    Toast.makeText(context, "Failed to fire siren: " + error, Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        });
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         });
     }
 
@@ -247,6 +278,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
         TextView tvDeviceName;
         ImageView imgDetectionStatus;
         ImageView imgAlarmStatus;
+        ImageView imgFireAlarm;
 
         public DeviceHolder(@NonNull View itemView) {
             super(itemView);
@@ -255,6 +287,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
             tvDeviceName = itemView.findViewById(R.id.tv_device_name);
             imgDetectionStatus = itemView.findViewById(R.id.img_detection_status);
             imgAlarmStatus = itemView.findViewById(R.id.img_alarm_status);
+            imgFireAlarm = itemView.findViewById(R.id.img_fire_alarm);
         }
     }
 }

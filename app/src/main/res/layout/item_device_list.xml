@@ -43,6 +43,14 @@
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:contentDescription="@null"/>
+
+        <ImageView
+            android:id="@+id/img_fire_alarm"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:scaleType="fitCenter"
+            android:src="@mipmap/play_alarm"
+            android:contentDescription="@null"/>
     </LinearLayout>
 
 </LinearLayout>
