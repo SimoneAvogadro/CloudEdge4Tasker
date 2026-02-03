@@ -48,6 +48,7 @@ public class DeviceListActivity extends AppCompatActivity {
     private ImageView imageDisableDetection;
     private ImageView imageEnableSiren;
     private ImageView imageDisableSiren;
+    private ImageView imageFireAlarm;
     private TabLayout tabLayout;
 
     private boolean prefGroupByFirstWord;
@@ -166,6 +167,7 @@ public class DeviceListActivity extends AppCompatActivity {
         imageDisableDetection = findViewById(R.id.imageDisableDetection);
         imageEnableSiren      = findViewById(R.id.imageEnableSiren);
         imageDisableSiren     = findViewById(R.id.imageDisableSiren);
+        imageFireAlarm        = findViewById(R.id.imageFireAlarm);
 
         // Initially disable all control buttons until SDK is ready
         setControlButtonsEnabled(false);
@@ -189,6 +191,11 @@ public class DeviceListActivity extends AppCompatActivity {
             Toast.makeText(DeviceListActivity.this, "Disabling sirens...", Toast.LENGTH_LONG).show();
             CamManager cm = CamManager.get(DeviceListActivity.this);
             cm.disableAllCameraAlarms(new ArrayList<>(filteredList));
+        });
+        imageFireAlarm.setOnClickListener(v -> {
+            Toast.makeText(DeviceListActivity.this, "Firing siren alarms...", Toast.LENGTH_LONG).show();
+            CamManager cm = CamManager.get(DeviceListActivity.this);
+            cm.fireAllSirenAlarms(new ArrayList<>(filteredList));
         });
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -219,6 +226,9 @@ public class DeviceListActivity extends AppCompatActivity {
 
         imageDisableSiren.setEnabled(enabled);
         imageDisableSiren.setAlpha(alpha);
+
+        imageFireAlarm.setEnabled(enabled);
+        imageFireAlarm.setAlpha(alpha);
     }
 
     @Override

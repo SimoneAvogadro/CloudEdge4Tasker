@@ -162,6 +162,17 @@ public class CamManager {
         });
     }
 
+    public void fireAllSirenAlarms(List<CameraInfo> cameras) {
+        doSomethingOnCameras(cameras, new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                MeariUser.getInstance().setFlightSirenEnable(1, then);
+            }
+            @Override
+            public String description() { return "Fire siren alarm"; }
+        });
+    }
+
     public void disableAllCameraAlarms(List<CameraInfo> cameras) {
         doSomethingOnCameras(cameras, new IDoSomething() {
             @Override
