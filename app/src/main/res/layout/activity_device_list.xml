@@ -58,8 +58,10 @@
         android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:paddingTop="12dp"
         android:visibility="gone"
-        app:tabMode="scrollable" />
+        app:tabMode="scrollable"
+        app:tabTextAppearance="@style/TabTextStyle" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"

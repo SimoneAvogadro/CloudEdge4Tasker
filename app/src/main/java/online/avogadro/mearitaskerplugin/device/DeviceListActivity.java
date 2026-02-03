@@ -12,6 +12,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -193,9 +194,17 @@ public class DeviceListActivity extends AppCompatActivity {
             cm.disableAllCameraAlarms(new ArrayList<>(filteredList));
         });
         imageFireAlarm.setOnClickListener(v -> {
-            Toast.makeText(DeviceListActivity.this, "Firing siren alarms...", Toast.LENGTH_LONG).show();
-            CamManager cm = CamManager.get(DeviceListActivity.this);
-            cm.fireAllSirenAlarms(new ArrayList<>(filteredList));
+            int count = filteredList.size();
+            new AlertDialog.Builder(DeviceListActivity.this)
+                    .setTitle("Fire siren?")
+                    .setMessage("You are about to fire the siren on " + count + " cameras. Continue?")
+                    .setPositiveButton("Yes", (dialog, which) -> {
+                        Toast.makeText(DeviceListActivity.this, "Firing siren alarms...", Toast.LENGTH_LONG).show();
+                        CamManager cm = CamManager.get(DeviceListActivity.this);
+                        cm.fireAllSirenAlarms(new ArrayList<>(filteredList));
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         });
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
