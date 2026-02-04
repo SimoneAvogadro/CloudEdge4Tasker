@@ -15,6 +15,18 @@ V 1.8.0 - Per-camera siren control and ADDED camera grouping (e.g. by zone, by h
     * IMPROVED: toolbar readability
     * FIXED: taskbar icon size for "scream"
 
+ * ADDED: support to "group" the cameras in "rooms" or "homes"
+ * ADDED: buttons to trigger siren alarm on one or multiple cameras
+ * ADDED: settings screen to allow enabling groups
+
+How to use groups:
+ * go to settings and enable them
+ * go the official CloudEdge app and rename the cameras so that the first word is the zone and the the name. E.g. "entrance patio", "entrance doorway", "entrance door", "garage door", "garage internal" => will create two zones "entrance" and "garage"
+ * select the zone on the tab: now the top buttons will operate only on the visible cameras
+
+NOTE: the group features is not yet usable via Tasker/MacroDroid actions
+
+
 V 1.7.0 - Improved GUI to quickly enable/disable a single camera
  * GUI:
     * ADDED: clicking on the PIR status or Alarm status of a camera will change it directly from the main screen
