@@ -94,7 +94,7 @@
         <activity
             android:name=".tasker.ActivityConfigTriggerSirenAction"
             android:exported="true"
-            android:icon="@mipmap/start_siren"
+            android:icon="@mipmap/play_alarm"
             android:label="Start the siren on the camera">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
