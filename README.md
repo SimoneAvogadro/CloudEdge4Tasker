@@ -7,6 +7,14 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.8.0 - Per-camera siren control and ADDED camera grouping (e.g. by zone, by house etc...)
+ * GUI:
+    * ADDED: can trigger siren alarm on single cameras directly from the main screen (with confirmation dialog)
+    * ADDED: settings menu to allow grouping cameras by the first word of their name (tab-based filtering)
+    * IMPROVED: per-camera visual feedback on all-camera actions (enable/disable PIR, enable/disable siren)
+    * IMPROVED: toolbar readability
+    * FIXED: taskbar icon size for "scream"
+
 V 1.7.0 - Improved GUI to quickly enable/disable a single camera
  * GUI:
     * ADDED: clicking on the PIR status or Alarm status of a camera will change it directly from the main screen
