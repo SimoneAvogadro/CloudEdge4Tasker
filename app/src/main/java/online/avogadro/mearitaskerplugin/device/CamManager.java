@@ -105,6 +105,11 @@ public class CamManager {
         public String description();
     }
 
+    public interface ICameraOperationCallback {
+        void onCameraSuccess(CameraInfo cameraInfo);
+        void onCameraFailed(CameraInfo cameraInfo, int code, String error);
+    }
+
     List<CameraInfo> deviceList = new ArrayList<CameraInfo>();
 
     long deviceListLastReload = 0L;
@@ -128,6 +133,10 @@ public class CamManager {
     }
 
     public void disableAllCameras(List<CameraInfo> cameras) {
+        disableAllCameras(cameras, null);
+    }
+
+    public void disableAllCameras(List<CameraInfo> cameras, ICameraOperationCallback perCameraCallback) {
         int enableFlag = 0;
         doSomethingOnCameras(cameras, new IDoSomething() {
             @Override
@@ -136,10 +145,14 @@ public class CamManager {
             }
             @Override
             public String description() { return "Disable movement detection"; }
-        });
+        }, perCameraCallback);
     }
 
     public void enableAllCameras(List<CameraInfo> cameras) {
+        enableAllCameras(cameras, null);
+    }
+
+    public void enableAllCameras(List<CameraInfo> cameras, ICameraOperationCallback perCameraCallback) {
         int enableFlag = 1;
         doSomethingOnCameras(cameras, new IDoSomething() {
             @Override
@@ -148,10 +161,14 @@ public class CamManager {
             }
             @Override
             public String description() { return "Enable movement detection"; }
-        });
+        }, perCameraCallback);
     }
 
     public void enableAllCameraAlarms(List<CameraInfo> cameras) {
+        enableAllCameraAlarms(cameras, null);
+    }
+
+    public void enableAllCameraAlarms(List<CameraInfo> cameras, ICameraOperationCallback perCameraCallback) {
         doSomethingOnCameras(cameras, new IDoSomething() {
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
@@ -159,10 +176,14 @@ public class CamManager {
             }
             @Override
             public String description() { return "Enable alarm on detection"; }
-        });
+        }, perCameraCallback);
     }
 
     public void fireAllSirenAlarms(List<CameraInfo> cameras) {
+        fireAllSirenAlarms(cameras, null);
+    }
+
+    public void fireAllSirenAlarms(List<CameraInfo> cameras, ICameraOperationCallback perCameraCallback) {
         doSomethingOnCameras(cameras, new IDoSomething() {
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
@@ -170,10 +191,14 @@ public class CamManager {
             }
             @Override
             public String description() { return "Fire siren alarm"; }
-        });
+        }, perCameraCallback);
     }
 
     public void disableAllCameraAlarms(List<CameraInfo> cameras) {
+        disableAllCameraAlarms(cameras, null);
+    }
+
+    public void disableAllCameraAlarms(List<CameraInfo> cameras, ICameraOperationCallback perCameraCallback) {
         doSomethingOnCameras(cameras, new IDoSomething() {
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
@@ -181,7 +206,7 @@ public class CamManager {
             }
             @Override
             public String description() { return "Disable alarm on detection"; }
-        });
+        }, perCameraCallback);
     }
 
     public void disableAllCameras() {
@@ -701,8 +726,9 @@ public class CamManager {
      * Apply an action to a specific list of cameras in parallel
      * @param cameras list of cameras to act on
      * @param whatToDo action to apply to each camera
+     * @param perCameraCallback optional callback invoked per-camera on completion (may be null)
      */
-    private void doSomethingOnCameras(List<CameraInfo> cameras, IDoSomething whatToDo) {
+    private void doSomethingOnCameras(List<CameraInfo> cameras, IDoSomething whatToDo, ICameraOperationCallback perCameraCallback) {
         for (CameraInfo cameraInfo : cameras) {
             MeariDeviceController deviceController = new MeariDeviceController();
             deviceController.setCameraInfo(cameraInfo);
@@ -715,12 +741,18 @@ public class CamManager {
                 public void onSuccess() {
                     Log.d("CamManager", "--->camera " + cameraInfo.getDeviceName() + " camera configuration success");
                     Toast.makeText(context, whatToDo.description() + " on " + cameraInfo.getDeviceName(), Toast.LENGTH_LONG).show();
+                    if (perCameraCallback != null) {
+                        perCameraCallback.onCameraSuccess(cameraInfo);
+                    }
                 }
 
                 @Override
                 public void onFailed(int i, String s) {
                     Log.w("CamManager", "--->camera " + cameraInfo.getDeviceName() + " camera configuration failed " + s);
                     Toast.makeText(context, "Failed on " + cameraInfo.getDeviceName() + " : " + s, Toast.LENGTH_LONG).show();
+                    if (perCameraCallback != null) {
+                        perCameraCallback.onCameraFailed(cameraInfo, i, s);
+                    }
                 }
             });
         }

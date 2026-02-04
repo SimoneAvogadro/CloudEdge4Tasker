@@ -175,23 +175,43 @@ public class DeviceListActivity extends AppCompatActivity {
 
         imageEnableDetection.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Enabling cameras...", Toast.LENGTH_LONG).show();
-            CamManager cm = CamManager.get(DeviceListActivity.this);
-            cm.enableAllCameras(new ArrayList<>(filteredList));
+            setAllIconsLoading(true);
+            List<CameraInfo> snapshot = new ArrayList<>(filteredList);
+            recyclerView.post(() -> {
+                CamManager cm = CamManager.get(DeviceListActivity.this);
+                cm.enableAllCameras(snapshot,
+                        createPerCameraIconCallback(R.mipmap.camera_play, true, true));
+            });
         });
         imageDisableDetection.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Disabling cameras...", Toast.LENGTH_LONG).show();
-            CamManager cm = CamManager.get(DeviceListActivity.this);
-            cm.disableAllCameras(new ArrayList<>(filteredList));
+            setAllIconsLoading(true);
+            List<CameraInfo> snapshot = new ArrayList<>(filteredList);
+            recyclerView.post(() -> {
+                CamManager cm = CamManager.get(DeviceListActivity.this);
+                cm.disableAllCameras(snapshot,
+                        createPerCameraIconCallback(R.mipmap.camera_pause, false, true));
+            });
         });
         imageEnableSiren.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Enabling sirens...", Toast.LENGTH_LONG).show();
-            CamManager cm = CamManager.get(DeviceListActivity.this);
-            cm.enableAllCameraAlarms(new ArrayList<>(filteredList));
+            setAllIconsLoading(false);
+            List<CameraInfo> snapshot = new ArrayList<>(filteredList);
+            recyclerView.post(() -> {
+                CamManager cm = CamManager.get(DeviceListActivity.this);
+                cm.enableAllCameraAlarms(snapshot,
+                        createPerCameraIconCallback(R.mipmap.enable_siren, true, false));
+            });
         });
         imageDisableSiren.setOnClickListener(v -> {
             Toast.makeText(DeviceListActivity.this, "Disabling sirens...", Toast.LENGTH_LONG).show();
-            CamManager cm = CamManager.get(DeviceListActivity.this);
-            cm.disableAllCameraAlarms(new ArrayList<>(filteredList));
+            setAllIconsLoading(false);
+            List<CameraInfo> snapshot = new ArrayList<>(filteredList);
+            recyclerView.post(() -> {
+                CamManager cm = CamManager.get(DeviceListActivity.this);
+                cm.disableAllCameraAlarms(snapshot,
+                        createPerCameraIconCallback(R.mipmap.disable_siren, false, false));
+            });
         });
         imageFireAlarm.setOnClickListener(v -> {
             int count = filteredList.size();
@@ -201,7 +221,7 @@ public class DeviceListActivity extends AppCompatActivity {
                     .setPositiveButton("Yes", (dialog, which) -> {
                         Toast.makeText(DeviceListActivity.this, "Firing siren alarms...", Toast.LENGTH_LONG).show();
                         CamManager cm = CamManager.get(DeviceListActivity.this);
-                        cm.fireAllSirenAlarms(new ArrayList<>(filteredList));
+                        cm.fireAllSirenAlarms(new ArrayList<>(filteredList), null);
                     })
                     .setNegativeButton("Cancel", null)
                     .show();
@@ -332,6 +352,66 @@ public class DeviceListActivity extends AppCompatActivity {
             tabLayout.setVisibility(View.GONE);
             applyFilter("ALL");
         }
+    }
+
+    /**
+     * Set all visible icons for the given type to alpha 0.5 (loading state).
+     * @param isDetection true for PIR detection icons, false for alarm icons
+     */
+    private void setAllIconsLoading(boolean isDetection) {
+        for (int i = 0; i < filteredList.size(); i++) {
+            RecyclerView.ViewHolder vh = recyclerView.findViewHolderForAdapterPosition(i);
+            if (vh instanceof DeviceListAdapter.DeviceHolder) {
+                DeviceListAdapter.DeviceHolder dh = (DeviceListAdapter.DeviceHolder) vh;
+                if (isDetection) {
+                    dh.imgDetectionStatus.setAlpha(0.5f);
+                } else {
+                    dh.imgAlarmStatus.setAlpha(0.5f);
+                }
+            }
+        }
+    }
+
+    private CamManager.ICameraOperationCallback createPerCameraIconCallback(int iconRes, boolean newState, boolean isDetection) {
+        return new CamManager.ICameraOperationCallback() {
+            @Override
+            public void onCameraSuccess(CameraInfo cameraInfo) {
+                runOnUiThread(() -> {
+                    int pos = filteredList.indexOf(cameraInfo);
+                    if (pos < 0) return;
+                    RecyclerView.ViewHolder vh = recyclerView.findViewHolderForAdapterPosition(pos);
+                    if (vh instanceof DeviceListAdapter.DeviceHolder) {
+                        DeviceListAdapter.DeviceHolder dh = (DeviceListAdapter.DeviceHolder) vh;
+                        if (isDetection) {
+                            dh.imgDetectionStatus.setImageResource(iconRes);
+                            dh.imgDetectionStatus.setTag(newState);
+                            dh.imgDetectionStatus.setAlpha(1.0f);
+                        } else {
+                            dh.imgAlarmStatus.setImageResource(iconRes);
+                            dh.imgAlarmStatus.setTag(newState);
+                            dh.imgAlarmStatus.setAlpha(1.0f);
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onCameraFailed(CameraInfo cameraInfo, int code, String error) {
+                runOnUiThread(() -> {
+                    int pos = filteredList.indexOf(cameraInfo);
+                    if (pos < 0) return;
+                    RecyclerView.ViewHolder vh = recyclerView.findViewHolderForAdapterPosition(pos);
+                    if (vh instanceof DeviceListAdapter.DeviceHolder) {
+                        DeviceListAdapter.DeviceHolder dh = (DeviceListAdapter.DeviceHolder) vh;
+                        if (isDetection) {
+                            dh.imgDetectionStatus.setAlpha(1.0f);
+                        } else {
+                            dh.imgAlarmStatus.setAlpha(1.0f);
+                        }
+                    }
+                });
+            }
+        };
     }
 
     private void applyFilter(String group) {

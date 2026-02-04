@@ -43,7 +43,14 @@ CloudEdge4Tasker is an Android plugin app that integrates CloudEdge/Meari batter
    - Each action has its own Helper, Runner, and Configuration Activity
    - Pattern: `ActionHelper.kt` + `ActionRunner.kt` + `ActivityConfigAction.kt`
 
-3. **Event System** (`tasker/events/`)
+3. **Device List UI** (`device/DeviceListActivity.java` + `DeviceListAdapter.java`)
+   - Main screen showing all cameras with bulk control buttons (enable/disable PIR, enable/disable siren, fire all sirens)
+   - Bulk fire siren requires AlertDialog confirmation
+   - Tab-based filtering by first word of camera name (configurable via settings)
+   - Per-camera inline controls: toggle PIR detection, toggle siren, fire siren on single camera (with confirmation dialog)
+   - Waits for MeariIotManager initialization before enabling controls
+
+4. **Event System** (`tasker/events/`)
    - Firebase messaging for camera notifications
    - `CameraAlarmRaiser.kt` converts Firebase messages to Tasker events
    - `AnyNotificationReceiver.java` handles incoming push notifications
