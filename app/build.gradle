@@ -13,8 +13,8 @@ android {
         applicationId "online.avogadro.mearitaskerplugin"
         minSdkVersion 24
         targetSdkVersion 33
-        versionCode 432
-        versionName "4.3.0"
+        versionCode 433
+        versionName "4.3.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         multiDexEnabled = true
 
