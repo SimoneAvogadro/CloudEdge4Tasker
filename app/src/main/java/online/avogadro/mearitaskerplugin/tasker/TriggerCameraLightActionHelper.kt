@@ -54,11 +54,24 @@ abstract class AbstractCameraActionConfig : Activity(), TaskerPluginConfig<Downl
         get() = applicationContext
 
     abstract val taskerHelper: HelperHolder
-    
+
+    open val editHint: String = HINT_GROUP
+    open val helpText: String = HELP_GROUP
+
+    companion object {
+        const val HINT_GROUP = "ID, name, pattern (e.g. Garden*), * or %variable"
+        const val HELP_GROUP = "Use \"*\" to target all cameras.\nUse a camera name or pattern with \"*\" wildcards (e.g. Garden*) to match by name.\nUse a numeric ID for exact camera ID match.\nUse %variable for Tasker/MacroDroid variable substitution."
+        const val HINT_SINGLE = "Camera ID or %variable"
+        const val HELP_SINGLE = "Use a numeric camera ID.\nUse %variable for Tasker/MacroDroid variable substitution."
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityConfigTriggerCameraLightBinding.inflate(layoutInflater)
-        
+
+        binding.editCameraID.hint = editHint
+        binding.textView.text = helpText
+
         binding.buttonOK.setOnClickListener {
             taskerHelper.finishForTasker()
         }

@@ -27,6 +27,8 @@ class DownloadLastCameraImageActionHelper(config: TaskerPluginConfig<DownloadLas
 
 class ActivityConfigDownloadLastCameraImageAction : AbstractCameraActionConfig() {
     override val taskerHelper by lazy { DownloadLastCameraImageActionHelper(this) }
+    override val editHint = AbstractCameraActionConfig.HINT_SINGLE
+    override val helpText = AbstractCameraActionConfig.HELP_SINGLE
 }
 
 class DownloadLastCameraImageActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput,DownloadLastCameraImageOutput>() {
