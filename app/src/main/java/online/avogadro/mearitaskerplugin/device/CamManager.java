@@ -693,10 +693,9 @@ public class CamManager {
 
 
     /**
-     * Fire siren on multiple cameras with a single shared wake-up delay.
-     * Wakes all cameras in parallel, waits once, then fires siren on each.
+     * Wake a list of cameras, wait once, then execute an action on each.
      */
-    public void fireSirenOnCameras(List<CameraInfo> cameras, ISetDeviceParamsCallback event) {
+    private void wakeAndDoSomethingOnCameras(List<CameraInfo> cameras, IDoSomething whatToDo, ISetDeviceParamsCallback event) {
         if (cameras.isEmpty()) {
             if (event != null) event.onFailed(-1, "No cameras matched");
             return;
@@ -710,60 +709,30 @@ public class CamManager {
         } catch (InterruptedException e) {
             // ignore
         }
-        for (CameraInfo ci : cameras) {
-            MeariDeviceController dc = new MeariDeviceController();
-            dc.setCameraInfo(ci);
-            MeariUser.getInstance().setCameraInfo(ci);
-            MeariUser.getInstance().setController(dc);
-            MeariUser.getInstance().setFlightSirenEnable(1, new ISetDeviceParamsCallback() {
-                @Override
-                public void onSuccess() {
-                    Log.d("CamManager", "fireSiren success on " + ci.getDeviceName());
-                }
-                @Override
-                public void onFailed(int i, String s) {
-                    Log.w("CamManager", "fireSiren failed on " + ci.getDeviceName() + ": " + s);
-                }
-            });
-        }
+        doSomethingOnCameras(cameras, whatToDo, null);
         if (event != null) event.onSuccess();
     }
 
-    /**
-     * Turn on light on multiple cameras with a single shared wake-up delay.
-     * Wakes all cameras in parallel, waits once, then turns on light on each.
-     */
+    public void fireSirenOnCameras(List<CameraInfo> cameras, ISetDeviceParamsCallback event) {
+        wakeAndDoSomethingOnCameras(cameras, new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                MeariUser.getInstance().setFlightSirenEnable(1, then);
+            }
+            @Override
+            public String description() { return "Fire siren alarm"; }
+        }, event);
+    }
+
     public void turnOnLightOnCameras(List<CameraInfo> cameras, ISetDeviceParamsCallback event) {
-        if (cameras.isEmpty()) {
-            if (event != null) event.onFailed(-1, "No cameras matched");
-            return;
-        }
-        MeariIotManager.getInstance().init();
-        for (CameraInfo ci : cameras) {
-            MeariIotManager.getInstance().wakeDevice(ci.getSnNum());
-        }
-        try {
-            Thread.sleep(10 * 1000);
-        } catch (InterruptedException e) {
-            // ignore
-        }
-        for (CameraInfo ci : cameras) {
-            MeariDeviceController dc = new MeariDeviceController();
-            dc.setCameraInfo(ci);
-            MeariUser.getInstance().setCameraInfo(ci);
-            MeariUser.getInstance().setController(dc);
-            MeariUser.getInstance().setFlightLightStatus(1, new ISetDeviceParamsCallback() {
-                @Override
-                public void onSuccess() {
-                    Log.d("CamManager", "turnOnLight success on " + ci.getDeviceName());
-                }
-                @Override
-                public void onFailed(int i, String s) {
-                    Log.w("CamManager", "turnOnLight failed on " + ci.getDeviceName() + ": " + s);
-                }
-            });
-        }
-        if (event != null) event.onSuccess();
+        wakeAndDoSomethingOnCameras(cameras, new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                MeariUser.getInstance().setFlightLightStatus(1, then);
+            }
+            @Override
+            public String description() { return "Turn on camera light"; }
+        }, event);
     }
 
     /**
