@@ -63,14 +63,15 @@ online.avogadro.mearitaskerplugin/
 │   ├── SettingsActivity.java     # App preferences
 │   └── TrafficManagerActivity.java # Traffic/data management
 ├── tasker/
+│   ├── CameraResolver.kt             # Selector→camera list resolution (glob, ID, name)
+│   ├── TriggerCameraLightActionHelper.kt  # Turn on light + AbstractCameraActionConfig base class + HelperHolder interface
 │   ├── BasicActionHelper.kt      # Enable PIR detection
 │   ├── ActivityConfigDisableAlarms.kt # Disable PIR detection
 │   ├── EnableSirenActionHelper.kt    # Enable siren on all cameras
 │   ├── DisableSirenActionHelper.kt   # Disable siren on all cameras
 │   ├── DownloadLastCameraImageActionHelper.kt # Download alert image
 │   ├── TakePictureActionHelper.kt    # Take live snapshot
-│   ├── TriggerCameraSirenActionHelper.kt  # Fire siren on single camera
-│   ├── TriggerCameraLightActionHelper.kt  # Turn on camera light
+│   ├── TriggerCameraSirenActionHelper.kt  # Fire siren on camera(s)
 │   ├── DownloadLastCameraImageInput.kt    # Input: cameraID, cameraName
 │   ├── DownloadLastCameraImageOutput.kt   # Output: image file path
 │   └── events/
@@ -109,8 +110,18 @@ Central singleton (`CamManager.get(context)`) for all camera operations.
 - `disableAllCameraAlarms(List<CameraInfo>)` - Disable siren alarm
 - `fireAllSirenAlarms(List<CameraInfo>)` - Fire sirens
 
+**Selector-based operations** (login + resolve selector via `CameraResolver` + action):
+- `enableCamerasPIR(selector, callback)` - Enable PIR detection
+- `disableCamerasPIR(selector, callback)` - Disable PIR detection
+- `fireSirenOnCameras(selector, callback)` - Fire siren (10s wake-up)
+- `turnOnLightOnCameras(selector, callback)` - Turn on light (10s wake-up)
+
+**List-based operations** (operate on a pre-resolved list of cameras):
+- `fireSirenOnCameras(List<CameraInfo>, callback)` - Fire siren via `wakeAndDoSomethingOnCameras`
+- `turnOnLightOnCameras(List<CameraInfo>, callback)` - Turn on light via `wakeAndDoSomethingOnCameras`
+
 **No-arg bulk operations** (login first, then operate on all cached cameras):
-- `enableAllCameras()`, `disableAllCameras()`, `enableAllCameraAlarms()`, `disableAllCameraAlarms()`
+- `enableAllCameraAlarms()`, `disableAllCameraAlarms()`
 
 **Single-camera operations** (with `ISetDeviceParamsCallback`):
 - `enableSingleCameraPIR(context, cameraID, callback)`
@@ -118,7 +129,6 @@ Central singleton (`CamManager.get(context)`) for all camera operations.
 - `enableSingleCameraAlarm(context, cameraID, callback)`
 - `disableSingleCameraAlarm(context, cameraID, callback)`
 - `fireSirenAlarm(context, cameraID, callback)` - Includes 10s wake-up delay
-- `turnOnLight(context, cameraID, callback)` - Includes 10s wake-up delay
 
 **Image/Media:**
 - `takeAPicture(context, cameraID, listener)` - Live snapshot (90s timeout)
@@ -128,22 +138,37 @@ Central singleton (`CamManager.get(context)`) for all camera operations.
 
 #### 2. Tasker Actions (`tasker/` package)
 
-Each action follows the pattern: `ActionHelper.kt` (+ embedded `ActionRunner`) + `ActivityConfig*.kt`
+Each action follows the pattern: `ActionHelper.kt` (+ embedded `ActionRunner`) + config Activity extending `AbstractCameraActionConfig`.
+
+All config Activities with camera selector extend `AbstractCameraActionConfig` (in `TriggerCameraLightActionHelper.kt`), which provides:
+- Camera dropdown spinner (populated via `CamManager.loginAndInitList`)
+- EditText for camera ID/selector
+- Configurable hint and help text via `open val editHint` / `open val helpText`
+- Constants: `HINT_GROUP`/`HELP_GROUP` (for group-capable actions), `HINT_SINGLE`/`HELP_SINGLE` (for single-camera actions)
+
+Helpers must implement `HelperHolder` interface (defines `finishForTasker()` and `onCreate()`).
 
 | Action | Helper | Config Activity | Input/Output | Description |
 |--------|--------|-----------------|--------------|-------------|
-| Enable PIR | `BasicActionHelper` | `ActivityConfigBasicAction` | `DownloadLastCameraImageInput` → `Unit` | Enable motion detection (supports `*` for all cameras) |
-| Disable PIR | `DisableAlarmsHelper` | `ActivityConfigDisableAlarms` | `DownloadLastCameraImageInput` → `Unit` | Disable motion detection (supports `*` for all cameras) |
+| Enable PIR | `BasicActionHelper` | `ActivityConfigBasicAction` | `DownloadLastCameraImageInput` → `Unit` | Enable motion detection (supports selectors: `*`, name, glob, ID) |
+| Disable PIR | `DisableAlarmsHelper` | `ActivityConfigDisableAlarms` | `DownloadLastCameraImageInput` → `Unit` | Disable motion detection (supports selectors) |
 | Enable Siren | `EnableSirenActionHelper` | `ActivityConfigEnableSirenAction` | `Unit` → `Unit` | Enable siren alarm on all cameras |
 | Disable Siren | `DisableSirenActionHelper` | `ActivityConfigDisableSirenAction` | `Unit` → `Unit` | Disable siren alarm on all cameras |
-| Download Alert Image | `DownloadLastCameraImageActionHelper` | `ActivityConfigDownloadLastCameraImageAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Download latest alert image (30s timeout) |
-| Take Picture | `TakePictureActionHelper` | `ActivityConfigTakePictureAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Capture live snapshot (90s timeout) |
-| Fire Siren | `TriggerCameraSirenActionHelper` | `ActivityConfigTriggerSirenAction` | `DownloadLastCameraImageInput` → `Unit` | Fire siren on single camera (10s wake-up) |
-| Turn On Light | `TurnOnLightActionHelper` | `ActivityConfigTurnOnLightAction` | `DownloadLastCameraImageInput` → `Unit` | Turn on camera light (10s wake-up) |
+| Download Alert Image | `DownloadLastCameraImageActionHelper` | `ActivityConfigDownloadLastCameraImageAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Download latest alert image (30s timeout, single camera only) |
+| Take Picture | `TakePictureActionHelper` | `ActivityConfigTakePictureAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Capture live snapshot (90s timeout, single camera only) |
+| Fire Siren | `TriggerCameraSirenActionHelper` | `ActivityConfigTriggerSirenAction` | `DownloadLastCameraImageInput` → `Unit` | Fire siren (supports selectors, 10s wake-up) |
+| Turn On Light | `TurnOnLightActionHelper` | `ActivityConfigTurnOnLightAction` | `DownloadLastCameraImageInput` → `Unit` | Turn on camera light (supports selectors, 10s wake-up) |
 
 **Input/Output classes:**
 - `DownloadLastCameraImageInput` - Fields: `cameraID` (String), `cameraName` (String)
 - `DownloadLastCameraImageOutput` - Fields: image file path
+
+**CameraResolver** (`tasker/CameraResolver.kt`):
+Resolves a selector string to a list of matching `CameraInfo` objects:
+- `null` / `""` / `"*"` → all cameras
+- Purely numeric string → exact match on `deviceID`
+- String containing `"*"` (but not just `"*"`) → glob match on `deviceName` (case-insensitive)
+- Non-numeric string without `"*"` → exact match on `deviceName` (case-insensitive)
 
 #### 3. Tasker Event
 
@@ -225,17 +250,19 @@ Main screen showing all cameras in a RecyclerView.
 ## Key Patterns
 
 ### Camera Operation Pattern
-All camera operations follow:
+Selector-based Tasker actions follow:
 1. Login with stored credentials
 2. Fetch/cache device list (120s cache)
-3. Find target camera by ID
-4. Set camera as current device
+3. Resolve selector to camera list via `CameraResolver.resolve()`
+4. Set each camera as current device
 5. Execute operation via Meari SDK
+
+For wake-up operations (siren, light), `wakeAndDoSomethingOnCameras()` wakes all matched cameras, waits 10s once, then executes the action on each.
 
 ### Async Operations
 - Most camera operations use callbacks (`ISetDeviceParamsCallback`)
 - Image downloads use `AsyncTask` pattern
-- Device wake-up includes hardcoded 10-second delays (fireSirenAlarm, turnOnLight)
+- Device wake-up includes hardcoded 10-second delays (fireSirenOnCameras, turnOnLightOnCameras)
 - Image download timeouts: 30s for alert images, 90s for live pictures
 
 ## Security Considerations

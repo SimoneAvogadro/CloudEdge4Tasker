@@ -7,6 +7,12 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.8.1 - Tasker/MacroDroid actions now support camera groups and have a camera selector dropdown
+ * Actions:
+    * ADDED: camera selector dropdown in all action configuration screens
+    * ADDED: Enable PIR, Disable PIR, Fire Siren and Turn On Light actions now support camera groups (name patterns with wildcards, e.g. "Garden*") and "*" to target all cameras
+ * NOTE: Download Last Image and Take Picture still require a single camera ID
+
 V 1.8.0 - Per-camera siren control and ADDED camera grouping (e.g. by zone, by house etc...)
  * GUI:
     * ADDED: can trigger siren alarm on single cameras directly from the main screen (with confirmation dialog)
@@ -24,7 +30,7 @@ How to use groups:
  * go the official CloudEdge app and rename the cameras so that the first word is the zone and the the name. E.g. "entrance patio", "entrance doorway", "entrance door", "garage door", "garage internal" => will create two zones "entrance" and "garage"
  * select the zone on the tab: now the top buttons will operate only on the visible cameras
 
-NOTE: the group features is not yet usable via Tasker/MacroDroid actions
+NOTE: since v1.8.1, groups are also supported via Tasker/MacroDroid actions (where applicable)
 
 
 V 1.7.0 - Improved GUI to quickly enable/disable a single camera
