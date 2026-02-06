@@ -40,6 +40,6 @@
         android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Use a camera name or pattern with &quot;*&quot; wildcards (e.g. Garden*) to match by name.\nUse a numeric ID for exact camera ID match.\nUse %variable for Tasker/MacroDroid variable substitution." />
+        android:text="Use &quot;*&quot; to target all cameras.\nUse a camera name or pattern with &quot;*&quot; wildcards (e.g. Garden*) to match by name.\nUse a numeric ID for exact camera ID match.\nUse %variable for Tasker/MacroDroid variable substitution." />
 
 </LinearLayout>

@@ -1,8 +1,6 @@
 package online.avogadro.mearitaskerplugin.tasker
 
-import android.app.Activity
 import android.content.Context
-import android.os.Bundle
 import android.util.Log
 import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerAction
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
@@ -11,55 +9,20 @@ import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultErrorWithOutput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
-import com.meari.sdk.bean.CameraInfo
-import com.meari.sdk.bean.DeviceAlarmMessage
-import com.meari.sdk.callback.IDeviceAlarmMessagesCallback
 import com.meari.sdk.callback.ISetDeviceParamsCallback
 import online.avogadro.mearitaskerplugin.device.CamManager
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import online.avogadro.mearitaskerplugin.databinding.ActivityConfigDownloadLastCameraImageBinding;
-import online.avogadro.mearitaskerplugin.databinding.ActivityConfigTriggerCameraSirenBinding
 
-class TriggerCameraSirenActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput,Unit,TriggerSirenActionRunner>(config) {
+class TriggerCameraSirenActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput,Unit,TriggerSirenActionRunner>(config), HelperHolder {
     override val runnerClass: Class<TriggerSirenActionRunner> get() = TriggerSirenActionRunner::class.java
     override val inputClass = DownloadLastCameraImageInput::class.java
     override val outputClass = Unit::class.java
     override fun addToStringBlurb(input: TaskerInput<DownloadLastCameraImageInput>, blurbBuilder: StringBuilder) {
-        blurbBuilder.append(" ")
+        // blurbBuilder.append(" ")
     }
 }
 
-class ActivityConfigTriggerSirenAction : Activity(), TaskerPluginConfig<DownloadLastCameraImageInput> {
-
-    private lateinit var binding: ActivityConfigTriggerCameraSirenBinding
-
-    override fun assignFromInput(input: TaskerInput<DownloadLastCameraImageInput>) {
-        // Log.d("ActivityConfigTriggerSirenAction","assignFromInput")
-        binding?.editCameraID?.setText(input.regular.cameraID);
-    }
-
-    override val inputForTasker: TaskerInput<DownloadLastCameraImageInput> get() {
-        // return TaskerInput<DownloadLastCameraImageInput>(DownloadLastCameraImageInput("109063372"))
-        return TaskerInput<DownloadLastCameraImageInput>(DownloadLastCameraImageInput(binding?.editCameraID?.text?.toString()))
-    }
-
-    override val context get() = applicationContext
-    private val taskerHelper by lazy { TriggerCameraSirenActionHelper(this) }
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        // ActivityConfigDownloadLastCameraImageBinding
-        // taskerHelper.finishForTasker() // => complete config and save value
-        // taskerHelper.onCreate() // => show config page
-        binding =  ActivityConfigTriggerCameraSirenBinding.inflate(layoutInflater)
-
-        binding.buttonOK.setOnClickListener {
-            // Handle button click event
-            taskerHelper.finishForTasker()
-        }
-        setContentView(binding.root)
-        taskerHelper.onCreate()
-    }
+class ActivityConfigTriggerSirenAction : AbstractCameraActionConfig() {
+    override val taskerHelper by lazy { TriggerCameraSirenActionHelper(this) }
 }
 
 class TriggerSirenActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput,Unit>() {

@@ -25,11 +25,11 @@ class TurnOnLightActionHelper(config: TaskerPluginConfig<DownloadLastCameraImage
     override val inputClass = DownloadLastCameraImageInput::class.java
     override val outputClass = Unit::class.java
     override fun addToStringBlurb(input: TaskerInput<DownloadLastCameraImageInput>, blurbBuilder: StringBuilder) {
-        blurbBuilder.append(" ")
+        // blurbBuilder.append(" ")
     }
 }
 
-class ActivityConfigTurnOnLightAction : AbstractActivityConfigTurnOnLightAction() {
+class ActivityConfigTurnOnLightAction : AbstractCameraActionConfig() {
     override val taskerHelper by lazy { TurnOnLightActionHelper(this) }
 }
 
@@ -38,7 +38,7 @@ interface HelperHolder {
     fun onCreate()
 }
 
-abstract class AbstractActivityConfigTurnOnLightAction : Activity(), TaskerPluginConfig<DownloadLastCameraImageInput> {
+abstract class AbstractCameraActionConfig : Activity(), TaskerPluginConfig<DownloadLastCameraImageInput> {
 
     private lateinit var binding: ActivityConfigTriggerCameraLightBinding
     private val cameraMap = mutableMapOf<String, String>() // Map camera name to ID
@@ -48,7 +48,7 @@ abstract class AbstractActivityConfigTurnOnLightAction : Activity(), TaskerPlugi
     }
 
     override val inputForTasker: TaskerInput<DownloadLastCameraImageInput>
-        get() = TaskerInput(DownloadLastCameraImageInput(binding.editCameraID.text.toString(), binding.editCameraID.hint.toString()))
+        get() = TaskerInput(DownloadLastCameraImageInput(binding.editCameraID.text.toString(), null))
 
     override val context: Context
         get() = applicationContext
@@ -90,7 +90,7 @@ abstract class AbstractActivityConfigTurnOnLightAction : Activity(), TaskerPlugi
 
                     // Set up spinner adapter
                     val adapter = ArrayAdapter(
-                        this@AbstractActivityConfigTurnOnLightAction,
+                        this@AbstractCameraActionConfig,
                         android.R.layout.simple_spinner_item,
                         cameraNames
                     )

@@ -1,8 +1,6 @@
 package online.avogadro.mearitaskerplugin.tasker
 
-import android.app.Activity
 import android.content.Context
-import android.os.Bundle
 import android.util.Log
 import com.joaomgcd.taskerpluginlibrary.action.TaskerPluginRunnerAction
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
@@ -11,53 +9,22 @@ import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultErrorWithOutput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
-import com.meari.sdk.bean.CameraInfo
-import com.meari.sdk.bean.DeviceAlarmMessage
-import com.meari.sdk.callback.IDeviceAlarmMessagesCallback
 import com.meari.sdk.listener.MeariDeviceListener
 import online.avogadro.mearitaskerplugin.device.CamManager
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import online.avogadro.mearitaskerplugin.databinding.ActivityConfigDownloadLastCameraImageBinding;
 
-class TakePictureActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput,DownloadLastCameraImageOutput,TakePictureActionRunner>(config) {
+class TakePictureActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput,DownloadLastCameraImageOutput,TakePictureActionRunner>(config), HelperHolder {
     override val runnerClass: Class<TakePictureActionRunner> get() = TakePictureActionRunner::class.java
     override val inputClass = DownloadLastCameraImageInput::class.java
     override val outputClass = DownloadLastCameraImageOutput::class.java
     override fun addToStringBlurb(input: TaskerInput<DownloadLastCameraImageInput>, blurbBuilder: StringBuilder) {
-        blurbBuilder.append(" Take high-res live picture from camera")
+        // blurbBuilder.append(" Take high-res live picture from camera")
     }
 }
 
-class ActivityConfigTakePictureAction : Activity(), TaskerPluginConfig<DownloadLastCameraImageInput> {
-
-    private lateinit var binding: ActivityConfigDownloadLastCameraImageBinding
-
-    override fun assignFromInput(input: TaskerInput<DownloadLastCameraImageInput>) {
-        // Log.d("ActivityConfigTakePictureAction","assignFromInput")
-        binding?.editCameraID?.setText(input.regular.cameraID);
-    }
-
-    override val inputForTasker: TaskerInput<DownloadLastCameraImageInput> get() {
-        return TaskerInput<DownloadLastCameraImageInput>(DownloadLastCameraImageInput(binding?.editCameraID?.text?.toString()))
-    }
-
-    override val context get() = applicationContext
-    private val taskerHelper by lazy { TakePictureActionHelper(this) }
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        // ActivityConfigDownloadLastCameraImageBinding
-        // taskerHelper.finishForTasker() // => complete config and save value
-        // taskerHelper.onCreate() // => show config page
-        binding =  ActivityConfigDownloadLastCameraImageBinding.inflate(layoutInflater)
-
-        binding.buttonOK.setOnClickListener {
-            // Handle button click event
-            taskerHelper.finishForTasker()
-        }
-        setContentView(binding.root)
-        taskerHelper.onCreate()
-    }
+class ActivityConfigTakePictureAction : AbstractCameraActionConfig() {
+    override val taskerHelper by lazy { TakePictureActionHelper(this) }
 }
 
 class TakePictureActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput,DownloadLastCameraImageOutput>() {
