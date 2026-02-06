@@ -71,22 +71,14 @@ class BasicActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput,
             // ignore, old config which did not come with an input
         }
 
-        cm.loginAndInitList(object : CamManager.IDoSomething {
-            override fun doSomething(then: ISetDeviceParamsCallback) {
-                val matched = CameraResolver.resolve(cameraID, cm.deviceList)
-                if (matched.isEmpty()) {
-                    result = "error: No cameras matched selector: $cameraID"
-                    return
-                }
-                cm.enableAllCameras(matched)
-            }
-            override fun description() = "Enable PIR"
+        cm.enableCamerasPIR(cameraID, object : ISetDeviceParamsCallback {
+            override fun onSuccess() { result = "ok" }
+            override fun onFailed(i: Int, s: String?) { result = "error: $s" }
         })
 
-        if (result.startsWith("error:")) {
+        if (result.startsWith("error:"))
             return TaskerPluginResultErrorWithOutput(-1, result)
-        } else {
+        else
             return TaskerPluginResultSucess()
-        }
     }
 }

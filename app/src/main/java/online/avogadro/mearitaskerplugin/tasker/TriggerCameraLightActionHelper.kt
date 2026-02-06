@@ -130,35 +130,16 @@ class TurnOnLightActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImage
         }
 
         var resultMessage = ""
-        cm.loginAndInitList(object : CamManager.IDoSomething {
-            override fun doSomething(then: ISetDeviceParamsCallback) {
-                val matched = CameraResolver.resolve(camID, cm.deviceList)
-                if (matched.isEmpty()) {
-                    resultMessage = "error: No cameras matched selector: $camID"
-                    return
-                }
-                if (matched.size == 1) {
-                    cm.turnOnLight(context, matched[0].deviceID, object : ISetDeviceParamsCallback {
-                        override fun onSuccess() { resultMessage = "ok" }
-                        override fun onFailed(i: Int, s: String?) {
-                            resultMessage = "error: $s"
-                        }
-                    })
-                } else {
-                    cm.turnOnLightOnCameras(matched, object : ISetDeviceParamsCallback {
-                        override fun onSuccess() { resultMessage = "ok" }
-                        override fun onFailed(i: Int, s: String?) {
-                            resultMessage = "error: $s"
-                        }
-                    })
-                }
+        cm.turnOnLightOnCameras(camID, object : ISetDeviceParamsCallback {
+            override fun onSuccess() { resultMessage = "ok" }
+            override fun onFailed(i: Int, s: String?) {
+                resultMessage = "error: $s"
             }
-            override fun description() = "Turn on light"
         })
 
-        return if (resultMessage.startsWith("error:"))
-            TaskerPluginResultErrorWithOutput(-1, resultMessage)
+        if (resultMessage.startsWith("error:"))
+            return TaskerPluginResultErrorWithOutput(-1, resultMessage)
         else
-            TaskerPluginResultSucess()
+            return TaskerPluginResultSucess()
     }
 }

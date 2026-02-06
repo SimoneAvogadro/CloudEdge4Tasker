@@ -72,38 +72,17 @@ class TriggerSirenActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImag
             return TaskerPluginResultErrorWithOutput(-1, "Missing camera selector parameter")
         }
 
-        cm.loginAndInitList(object : CamManager.IDoSomething {
-            override fun doSomething(then: ISetDeviceParamsCallback) {
-                val matched = CameraResolver.resolve(camID, cm.deviceList)
-                if (matched.isEmpty()) {
-                    result = "error: No cameras matched selector: $camID"
-                    return
-                }
-                if (matched.size == 1) {
-                    cm.fireSirenAlarm(context, matched[0].deviceID, object : ISetDeviceParamsCallback {
-                        override fun onSuccess() { result = "ok" }
-                        override fun onFailed(i: Int, s: String?) {
-                            Log.e("triggerSiren Fail", "$i $s")
-                            result = "error: $s"
-                        }
-                    })
-                } else {
-                    cm.fireSirenOnCameras(matched, object : ISetDeviceParamsCallback {
-                        override fun onSuccess() { result = "ok" }
-                        override fun onFailed(i: Int, s: String?) {
-                            Log.e("triggerSiren Fail", "$i $s")
-                            result = "error: $s"
-                        }
-                    })
-                }
+        cm.fireSirenOnCameras(camID, object : ISetDeviceParamsCallback {
+            override fun onSuccess() { result = "ok" }
+            override fun onFailed(i: Int, s: String?) {
+                Log.e("triggerSiren Fail", "$i $s")
+                result = "error: $s"
             }
-            override fun description() = "Fire siren"
         })
 
-        if (result.startsWith("error:")) {
+        if (result.startsWith("error:"))
             return TaskerPluginResultErrorWithOutput(-1, result)
-        } else {
+        else
             return TaskerPluginResultSucess()
-        }
     }
 }

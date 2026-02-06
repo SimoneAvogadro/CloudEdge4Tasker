@@ -27,6 +27,7 @@ import com.meari.sdk.callback.ISetDeviceParamsCallback;
 import online.avogadro.mearitaskerplugin.app.MeariApplication;
 import online.avogadro.mearitaskerplugin.app.SharedPreferencesHelper;
 import online.avogadro.mearitaskerplugin.app.Util;
+import online.avogadro.mearitaskerplugin.tasker.CameraResolver;
 
 import com.meari.sdk.listener.MeariDeviceListener;
 import com.meari.sdk.utils.Logger;
@@ -207,39 +208,6 @@ public class CamManager {
             @Override
             public String description() { return "Disable alarm on detection"; }
         }, perCameraCallback);
-    }
-
-    public void disableAllCameras() {
-        // getDataAndChangeState(false);
-
-        int enableFlag = 0;
-        loginAndDoSomethingOnAllCameras(new IDoSomething() {
-            @Override
-            public void doSomething(ISetDeviceParamsCallback then) {
-                MeariUser.getInstance().setPirDetectionEnable(enableFlag ,then);
-            }
-
-            @Override
-            public String description() {
-                return "Disable movement detection";
-            }
-        });
-    }
-
-    public void enableAllCameras() {
-        // getDataAndChangeState(true);
-        int enableFlag = 1;
-        loginAndDoSomethingOnAllCameras(new IDoSomething() {
-            @Override
-            public void doSomething(ISetDeviceParamsCallback then) {
-                MeariUser.getInstance().setPirDetectionEnable(enableFlag ,then);
-            }
-
-            @Override
-            public String description() {
-                return "Enable movement detection";
-            }
-        });
     }
 
     public void enableAllCameraAlarms() {
@@ -608,90 +576,6 @@ public class CamManager {
 
     }
 
-    public void turnOnLight(Context context, String camera, ISetDeviceParamsCallback event) {
-
-        loginAndInitList(new IDoSomething() {
-
-            @Override
-            public void doSomething(ISetDeviceParamsCallback then) {
-                // extract camera info
-                CameraInfo cameraInfo = null;
-                for (CameraInfo ci: deviceList) {
-                    if (camera.equals(ci.getDeviceID())) {
-                        cameraInfo = ci;
-                        break;
-                    }
-                }
-                if (cameraInfo==null) {
-                    event.onFailed(-1, "CameraID not found: "+camera);
-                    return;
-                }
-
-                MeariDeviceController deviceController = new MeariDeviceController();
-                deviceController.setCameraInfo(cameraInfo);
-                MeariUser.getInstance().setCameraInfo(cameraInfo);
-                MeariUser.getInstance().setController(deviceController);
-
-                if (1==0) {
-                    MeariIotManager.getInstance().init();
-                    MeariIotManager.getInstance().wakeDevice(cameraInfo.getSnNum());
-                    MeariUser.getInstance().remoteWakeUp(cameraInfo.getDeviceID(), new IResultCallback() {
-                        @Override
-                        public void onSuccess() {
-                            MeariUser.getInstance().setFlightLightStatus(1, new ISetDeviceParamsCallback() {
-                                @Override
-                                public void onSuccess() {
-                                    event.onSuccess();
-                                }
-
-                                @Override
-                                public void onFailed(int i, String s) {
-                                    event.onFailed(i, s);
-                                }
-                            });
-                        }
-
-                        @Override
-                        public void onError(int i, String s) {
-                            event.onFailed(i,s);
-                        }
-                    });
-                }
-
-                if (1==1) {
-                    MeariIotManager.getInstance().init();
-                    MeariIotManager.getInstance().wakeDevice(cameraInfo.getSnNum());
-                    // wake device does not provide a feedback of when the device is ready
-                    // so we don't know when it will be ready to start the siren...
-                    try {
-                        Thread.sleep(10*1000);
-                    } catch (InterruptedException e) {
-                         // ignore me, note really relevant
-                    }
-                    MeariUser.getInstance().setFlightLightStatus(1, new ISetDeviceParamsCallback() {
-                        @Override
-                        public void onSuccess() {
-                            event.onSuccess();
-                        }
-
-                        @Override
-                        public void onFailed(int i, String s) {
-                            event.onFailed(i, s);
-                        }
-                    });
-                }
-
-            }
-            @Override
-            public String description() {
-                return "Turn on camera light";
-            }
-
-        });
-
-    }
-
-
     /**
      * Wake a list of cameras, wait once, then execute an action on each.
      */
@@ -733,6 +617,74 @@ public class CamManager {
             @Override
             public String description() { return "Turn on camera light"; }
         }, event);
+    }
+
+    // --- Selector-based methods: login + resolve + action ---
+
+    public void enableCamerasPIR(String selector, ISetDeviceParamsCallback event) {
+        loginAndInitList(new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                List<CameraInfo> matched = CameraResolver.resolve(selector, deviceList);
+                if (matched.isEmpty()) {
+                    if (event != null) event.onFailed(-1, "No cameras matched selector: " + selector);
+                    return;
+                }
+                enableAllCameras(matched);
+                if (event != null) event.onSuccess();
+            }
+            @Override
+            public String description() { return "Enable PIR detection"; }
+        });
+    }
+
+    public void disableCamerasPIR(String selector, ISetDeviceParamsCallback event) {
+        loginAndInitList(new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                List<CameraInfo> matched = CameraResolver.resolve(selector, deviceList);
+                if (matched.isEmpty()) {
+                    if (event != null) event.onFailed(-1, "No cameras matched selector: " + selector);
+                    return;
+                }
+                disableAllCameras(matched);
+                if (event != null) event.onSuccess();
+            }
+            @Override
+            public String description() { return "Disable PIR detection"; }
+        });
+    }
+
+    public void fireSirenOnCameras(String selector, ISetDeviceParamsCallback event) {
+        loginAndInitList(new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                List<CameraInfo> matched = CameraResolver.resolve(selector, deviceList);
+                if (matched.isEmpty()) {
+                    if (event != null) event.onFailed(-1, "No cameras matched selector: " + selector);
+                    return;
+                }
+                fireSirenOnCameras(matched, event);
+            }
+            @Override
+            public String description() { return "Fire siren"; }
+        });
+    }
+
+    public void turnOnLightOnCameras(String selector, ISetDeviceParamsCallback event) {
+        loginAndInitList(new IDoSomething() {
+            @Override
+            public void doSomething(ISetDeviceParamsCallback then) {
+                List<CameraInfo> matched = CameraResolver.resolve(selector, deviceList);
+                if (matched.isEmpty()) {
+                    if (event != null) event.onFailed(-1, "No cameras matched selector: " + selector);
+                    return;
+                }
+                turnOnLightOnCameras(matched, event);
+            }
+            @Override
+            public String description() { return "Turn on light"; }
+        });
     }
 
     /**
