@@ -59,7 +59,6 @@ class ActivityConfigDisableAlarms : Activity(), TaskerPluginConfig<DownloadLastC
 
 class DisableAlarmsRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput, Unit>() {
     override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<Unit> {
-        // Handler(Looper.getMainLooper()).post { Toast.makeText(context, "Basic", Toast.LENGTH_LONG).show() }
         var result = ""
         val cm = CamManager.get(context)
 
@@ -71,24 +70,20 @@ class DisableAlarmsRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInpu
             // ignore, old config which did not come with an input
         }
 
-        if (cameraID==null || "" == cameraID || "*" == cameraID)
-            cm.disableAllCameras()
-        else
-            cm.disableSingleCameraPIR(context,cameraID,object:
-                ISetDeviceParamsCallback {
-                override fun onSuccess() {
-                    result = "ok";
+        cm.loginAndInitList(object : CamManager.IDoSomething {
+            override fun doSomething(then: ISetDeviceParamsCallback) {
+                val matched = CameraResolver.resolve(cameraID, cm.deviceList)
+                if (matched.isEmpty()) {
+                    result = "error: No cameras matched selector: $cameraID"
+                    return
                 }
-
-                override fun onFailed(i: Int, s: String?) {
-                    Log.e("DisableAlarm Fail", "$i $s")
-                    result="error: "+s;
-                }
-
-            })
+                cm.disableAllCameras(matched)
+            }
+            override fun description() = "Disable PIR"
+        })
 
         if (result.startsWith("error:")) {
-            return TaskerPluginResultErrorWithOutput(-1,result)
+            return TaskerPluginResultErrorWithOutput(-1, result)
         } else {
             return TaskerPluginResultSucess()
         }

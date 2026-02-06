@@ -20,7 +20,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Camera ID" />
+        android:text="Camera" />
 
     <EditText
         android:id="@+id/editCameraID"
@@ -28,12 +28,18 @@
         android:layout_height="wrap_content"
         android:ems="10"
         android:inputType="text"
-        android:hint="Camera ID" />
+        android:hint="ID, name, pattern (e.g. Garden*), * or %variable" />
 
     <Button
         android:id="@+id/buttonOK"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="OK" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Use a camera name or pattern with &quot;*&quot; wildcards (e.g. Garden*) to match by name.\nUse a numeric ID for exact camera ID match.\nUse %variable for Tasker/MacroDroid variable substitution." />
 
 </LinearLayout>

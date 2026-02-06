@@ -65,28 +65,43 @@ class ActivityConfigTriggerSirenAction : Activity(), TaskerPluginConfig<Download
 class TriggerSirenActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput,Unit>() {
     override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<Unit> {
         var result = ""
-
         val cm = CamManager.get(context)
+        val camID = input.regular.cameraID
 
-        var camID = input.regular.cameraID
-        if (camID=="" || camID==null || camID.toLongOrNull()==null) {
-            return TaskerPluginResultErrorWithOutput(-1,"Missing CameraID parameter")
+        if (camID.isNullOrEmpty()) {
+            return TaskerPluginResultErrorWithOutput(-1, "Missing camera selector parameter")
         }
 
-        cm.fireSirenAlarm(context, camID, object: ISetDeviceParamsCallback{
-            override fun onSuccess() {
-                result = "ok";
+        cm.loginAndInitList(object : CamManager.IDoSomething {
+            override fun doSomething(then: ISetDeviceParamsCallback) {
+                val matched = CameraResolver.resolve(camID, cm.deviceList)
+                if (matched.isEmpty()) {
+                    result = "error: No cameras matched selector: $camID"
+                    return
+                }
+                if (matched.size == 1) {
+                    cm.fireSirenAlarm(context, matched[0].deviceID, object : ISetDeviceParamsCallback {
+                        override fun onSuccess() { result = "ok" }
+                        override fun onFailed(i: Int, s: String?) {
+                            Log.e("triggerSiren Fail", "$i $s")
+                            result = "error: $s"
+                        }
+                    })
+                } else {
+                    cm.fireSirenOnCameras(matched, object : ISetDeviceParamsCallback {
+                        override fun onSuccess() { result = "ok" }
+                        override fun onFailed(i: Int, s: String?) {
+                            Log.e("triggerSiren Fail", "$i $s")
+                            result = "error: $s"
+                        }
+                    })
+                }
             }
-
-            override fun onFailed(i: Int, s: String?) {
-                Log.e("triggerSiren Fail", "$i $s")
-                result="error: "+s;
-            }
-
+            override fun description() = "Fire siren"
         })
 
         if (result.startsWith("error:")) {
-            return TaskerPluginResultErrorWithOutput(-1,result)
+            return TaskerPluginResultErrorWithOutput(-1, result)
         } else {
             return TaskerPluginResultSucess()
         }

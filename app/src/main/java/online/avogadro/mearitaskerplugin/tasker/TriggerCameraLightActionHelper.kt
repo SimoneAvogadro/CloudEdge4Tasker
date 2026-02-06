@@ -124,20 +124,38 @@ class TurnOnLightActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImage
     override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<Unit> {
         val cm = CamManager.get(context)
         val camID = input.regular.cameraID
-        if (camID.isNullOrEmpty() || camID.toLongOrNull() == null) {
-            return TaskerPluginResultErrorWithOutput(-1, "Missing or invalid CameraID parameter")
+
+        if (camID.isNullOrEmpty()) {
+            return TaskerPluginResultErrorWithOutput(-1, "Missing camera selector parameter")
         }
 
-        // call turnOnLight and wait for the callback (assumed synchronous for this example)
         var resultMessage = ""
-        cm.turnOnLight(context, camID, object : com.meari.sdk.callback.ISetDeviceParamsCallback {
-            override fun onSuccess() {
-                resultMessage = "ok"
+        cm.loginAndInitList(object : CamManager.IDoSomething {
+            override fun doSomething(then: ISetDeviceParamsCallback) {
+                val matched = CameraResolver.resolve(camID, cm.deviceList)
+                if (matched.isEmpty()) {
+                    resultMessage = "error: No cameras matched selector: $camID"
+                    return
+                }
+                if (matched.size == 1) {
+                    cm.turnOnLight(context, matched[0].deviceID, object : ISetDeviceParamsCallback {
+                        override fun onSuccess() { resultMessage = "ok" }
+                        override fun onFailed(i: Int, s: String?) {
+                            resultMessage = "error: $s"
+                        }
+                    })
+                } else {
+                    cm.turnOnLightOnCameras(matched, object : ISetDeviceParamsCallback {
+                        override fun onSuccess() { resultMessage = "ok" }
+                        override fun onFailed(i: Int, s: String?) {
+                            resultMessage = "error: $s"
+                        }
+                    })
+                }
             }
-            override fun onFailed(i: Int, s: String?) {
-                resultMessage = "error: $s"
-            }
+            override fun description() = "Turn on light"
         })
+
         return if (resultMessage.startsWith("error:"))
             TaskerPluginResultErrorWithOutput(-1, resultMessage)
         else
