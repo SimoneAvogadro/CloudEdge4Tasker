@@ -608,54 +608,27 @@ public class CamManager {
                 MeariUser.getInstance().setController(deviceController);
 
 
-                if (1==0) { // disabled temporarily
-                    MeariIotManager.getInstance().init();
-                    MeariIotManager.getInstance().wakeDevice(cameraInfo.getSnNum());
-                    MeariUser.getInstance().remoteWakeUp(cameraInfo.getDeviceID(), new IResultCallback() {
-                        @Override
-                        public void onSuccess() {
-                            MeariUser.getInstance().setFlightSirenEnable(1, new ISetDeviceParamsCallback() {
-                                @Override
-                                public void onSuccess() {
-                                    event.onSuccess();
-                                }
+                wakeCamera(cameraInfo.getSnNum(), new ISetDeviceParamsCallback() {
+                    @Override
+                    public void onSuccess() {
+                        MeariUser.getInstance().setFlightSirenEnable(1, new ISetDeviceParamsCallback() {
+                            @Override
+                            public void onSuccess() {
+                                event.onSuccess();
+                            }
 
-                                @Override
-                                public void onFailed(int i, String s) {
-                                    event.onFailed(i, s);
-                                }
-                            });
-                        }
-
-                        @Override
-                        public void onError(int i, String s) {
-                            event.onFailed(i, s);
-                        }
-                    });
-                }
-
-                if (1==1) {
-                    MeariIotManager.getInstance().init();
-                    MeariIotManager.getInstance().wakeDevice(cameraInfo.getSnNum());
-                    // wake device does not provide a feedback of when the device is ready
-                    // so we don't know when it will be ready to start the siren...
-                    try {
-                        Thread.sleep(10*1000);
-                    } catch (InterruptedException e) {
-                         // ignore me, note really relevant
+                            @Override
+                            public void onFailed(int i, String s) {
+                                event.onFailed(i, s);
+                            }
+                        });
                     }
-                    MeariUser.getInstance().setFlightSirenEnable(1, new ISetDeviceParamsCallback() {
-                        @Override
-                        public void onSuccess() {
-                            event.onSuccess();
-                        }
 
-                        @Override
-                        public void onFailed(int i, String s) {
-                            event.onFailed(i, s);
-                        }
-                    });
-                }
+                    @Override
+                    public void onFailed(int i, String s) {
+                        event.onFailed(i, s);
+                    }
+                });
             }
             @Override
             public String description() {
