@@ -283,9 +283,27 @@ For wake-up operations (siren, light), `wakeAndDoSomethingOnCameras()` wakes all
 - RxJava2 + RxAndroid
 - Google Material Components
 
+## SDK Notes (from decompiled core-sdk-meari-500-20230801.aar)
+
+### Stream IDs
+Two separate stream families exist for live preview:
+- **Native streams (0, 1)**: Direct P2P main/sub stream. Stream 0 = full camera resolution (e.g. 3MP). Always prefer stream 0 for max-quality snapshots.
+- **bps2 streams (100–103)**: Power-managed streams negotiated via `bps2` field. Lower quality, designed for live UI preview of battery cameras. `getDefaultStreamId()` in CommonUtils incorrectly directs battery cameras here.
+- **Adaptive stream (105)**: Available if `cameraInfo.getAdb()==1` and `ver>=81`.
+
+`bps2` field is a JSON like `{"0":"2304x1296@15","1":"640x360@25"}` — width×height@fps per stream key.
+Keys "0","1","2","3" in bps2 map to stream IDs 100,101,102,103 respectively.
+`MeariDeviceUtil.getVideoStreamId(cameraInfo)` returns supported native stream IDs (0,1) via `bps` bitmask.
+
+### Alert image / recording resolution (IoT commands, to investigate)
+- `MeariUser.setShotResolution(int resolution, int connectType, callback)` — IoT cmd "247": sets resolution of camera-side alert snapshots
+- `MeariUser.setRecordResolution(int resolution, int connectType, callback)` — IoT cmd "249": sets resolution of camera-side video recordings
+- `connectType` distinguishes IoT hub vs direct connection
+- These affect what `getLastAlertImage()` returns, not the live P2P stream
+
 ## Important Limitations
 
 - Single login session: CloudEdge doesn't allow concurrent logins
-- Wake-up delays: Battery cameras need time to come online (10s hardcoded)
+- Wake-up delays: Battery cameras need time to come online (adaptive polling, max 30s)
 - Image decryption: Uses proprietary MeariMediaUtil.decodePic()
 - Device list cache: 120-second refresh interval
