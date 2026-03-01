@@ -35,6 +35,7 @@ import online.avogadro.mearitaskerplugin.app.SharedPreferencesHelper;
 import online.avogadro.mearitaskerplugin.user.LoginActivity;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.TreeSet;
 
@@ -327,6 +328,11 @@ public class DeviceListActivity extends AppCompatActivity {
         deviceList.clear();
         deviceList.addAll(meariDevice.getFourthGenerations());
         deviceList.addAll(meariDevice.getBatteryCameras());
+        Collections.sort(deviceList, (a, b) -> {
+            String nameA = a.getDeviceName() != null ? a.getDeviceName() : "";
+            String nameB = b.getDeviceName() != null ? b.getDeviceName() : "";
+            return nameA.compareToIgnoreCase(nameB);
+        });
 
         rebuildTabs();
     }
