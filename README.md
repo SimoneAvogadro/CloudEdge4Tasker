@@ -7,6 +7,13 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.9.0 - Take Picture action now produces full-resolution snapshots
+ * FIXED: crash (NPE) in Take Picture action that caused the Tasker plugin service to die
+ * IMPROVED: Take Picture now uses the camera's main stream (stream 0) instead of the sub-stream,
+   producing full-resolution images (e.g. 3MP instead of 640×360)
+ * IMPROVED: Fire Siren on single camera now uses adaptive wake-up polling instead of a fixed 10s delay,
+   resulting in faster response when the camera comes online early
+
 V 1.8.1 - Tasker/MacroDroid actions now support camera groups and have a camera selector dropdown
  * Actions:
     * ADDED: camera selector dropdown in all action configuration screens
