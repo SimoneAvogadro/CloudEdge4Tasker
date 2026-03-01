@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.media.MediaScannerConnection;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -463,6 +464,7 @@ public class CamManager {
                                                 deviceController.stopPreview(NOOP_DEVICE_LISTENER);
                                                 deviceController.stopConnect(NOOP_DEVICE_LISTENER);
                                                 PPSMediaCodec.setGlobalEnable(true);
+                                                MediaScannerConnection.scanFile(context, new String[]{path}, new String[]{"image/jpeg"}, null);
                                                 event.onSuccess(path);
                                             }
 
