@@ -36,6 +36,7 @@ import com.meari.sdk.utils.SdkUtils;
 import com.ppstrong.ppsplayer.CameraPlayer;
 import com.ppstrong.ppsplayer.CameraPlayerListener;
 import com.ppstrong.ppsplayer.PPSGLSurfaceView;
+import com.ppstrong.ppsplayer.PPSMediaCodec;
 import com.ppstrong.utils.MeariMediaUtil;
 
 import java.io.ByteArrayOutputStream;
@@ -361,61 +362,99 @@ public class CamManager {
 
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
-                // extract camera info
                 CameraInfo cameraInfo = null;
-                for (CameraInfo ci: deviceList) {
+                for (CameraInfo ci : deviceList) {
                     if (camera.equals(ci.getDeviceID())) {
                         cameraInfo = ci;
                         break;
                     }
                 }
-                if (cameraInfo==null) {
-                    event.onFailed("CameraID not found: "+camera);
+                if (cameraInfo == null) {
+                    event.onFailed("CameraID not found: " + camera);
                     return;
                 }
+                final CameraInfo finalCameraInfo = cameraInfo;
 
                 MeariDeviceController deviceController = new MeariDeviceController();
-                deviceController.setCameraInfo(cameraInfo);
-                MeariUser.getInstance().setCameraInfo(cameraInfo);
+                deviceController.setCameraInfo(finalCameraInfo);
+                MeariUser.getInstance().setCameraInfo(finalCameraInfo);
                 MeariUser.getInstance().setController(deviceController);
 
+                // Force SOFT (ffmpeg) decode mode: in SOFT mode, snapshot() calls the native
+                // snapShot() which reads from the ffmpeg frame buffer - no OpenGL/EGL needed,
+                // so the dummy surface below does not need to be attached to any window.
+                PPSMediaCodec.setGlobalEnable(false);
+
+                // Dummy off-screen surface. Its renderer ByteBuffers (y/u/v) are allocated by
+                // the constructor. In SOFT mode, native ffmpeg writes YUV directly to them via
+                // setRenderBuffer() - no EGL context is required for this.
+                PPSGLSurfaceView dummySurface = new PPSGLSurfaceView(context, 320, 240);
+                String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                        .getAbsolutePath() + "/CloudEdge4TaskerSnapshot" + System.currentTimeMillis() + ".jpg";
+                int videoId = Integer.parseInt(online.avogadro.mearitaskerplugin.CommonUtils.getDefaultStreamId(finalCameraInfo));
+
+                // Battery cameras sleep between uses. Wake the device and wait for it to
+                // start listening for P2P connections (same pattern as wakeAndDoSomethingOnCameras).
+                MeariIotManager.getInstance().init();
+                MeariIotManager.getInstance().wakeDevice(finalCameraInfo.getSnNum());
+                try {
+                    Thread.sleep(20 * 1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
 
                 deviceController.startConnect(new MeariDeviceListener() {
                     @Override
-                    public void onSuccess(String successMsg) {
-                        // build path
-                        String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath()+"/"+"CloudEdge4TaskerSnapshot"+System.currentTimeMillis()+".jpg";
-
-                        // take snapshot
-                        PPSGLSurfaceView videoSurfaceView = new PPSGLSurfaceView(context, 320, 200);
-                        videoSurfaceView.takephoto(path, new CameraPlayerListener() {
+                    public void onSuccess(String connectMsg) {
+                        // startPreview triggers native ffmpeg decode into dummySurface.renderer.y/u/v.
+                        // onSuccess fires via the native startPlaySuccessCallback() JNI call
+                        // when the first frame is decoded - no sleep required.
+                        deviceController.startPreview(dummySurface, videoId, new MeariDeviceListener() {
                             @Override
-                            public void PPSuccessHandler(String s) {
-                                event.onSuccess(path);
+                            public void onSuccess(String firstFrameMsg) {
+                                // First frame is in the native ffmpeg buffer. snapshot() in SOFT
+                                // mode calls native snapShot() which reads that buffer and writes JPEG.
+                                deviceController.snapshot(path, new MeariDeviceListener() {
+                                    @Override
+                                    public void onSuccess(String snapshotMsg) {
+                                        deviceController.stopPreview(null);
+                                        deviceController.stopConnect(null);
+                                        PPSMediaCodec.setGlobalEnable(true);
+                                        event.onSuccess(path);
+                                    }
+
+                                    @Override
+                                    public void onFailed(String errorMsg) {
+                                        deviceController.stopPreview(null);
+                                        deviceController.stopConnect(null);
+                                        PPSMediaCodec.setGlobalEnable(true);
+                                        event.onFailed(errorMsg);
+                                    }
+                                });
                             }
 
                             @Override
-                            public void PPFailureError(String s) {
-                                event.onFailed(s);
+                            public void onFailed(String errorMsg) {
+                                deviceController.stopConnect(null);
+                                PPSMediaCodec.setGlobalEnable(true);
+                                event.onFailed(errorMsg);
                             }
-                        });
-                        // deviceController.snapshot(path,event);
+                        }, null);
                     }
 
                     @Override
                     public void onFailed(String errorMsg) {
+                        PPSMediaCodec.setGlobalEnable(true);
                         event.onFailed(errorMsg);
                     }
                 });
-
             }
+
             @Override
             public String description() {
                 return "Take a picture";
             }
-
         });
-
     }
 
     public void disableSingleCameraPIR(Context context, String camera, ISetDeviceParamsCallback event) {
