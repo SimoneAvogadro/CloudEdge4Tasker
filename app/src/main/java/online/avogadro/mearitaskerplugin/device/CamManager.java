@@ -49,6 +49,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import com.meari.sdk.callback.IGetDeviceStatusCallback;
 
 public class CamManager {
 
@@ -64,6 +68,11 @@ public class CamManager {
         public void onFailed(int i, String s) {
             // nothing
         }
+    };
+
+    MeariDeviceListener NOOP_DEVICE_LISTENER = new MeariDeviceListener() {
+        @Override public void onSuccess(String msg) {}
+        @Override public void onFailed(String errorMsg) {}
     };
 
     class MyMeariDeviceController extends MeariDeviceController {
@@ -356,6 +365,45 @@ public class CamManager {
         deviceListLastReload = System.currentTimeMillis();
     }
 
+    /**
+     * Wakes a battery camera and polls until it is online, then calls onSuccess().
+     * Polls every 3 s for up to 10 attempts (~30 s total).
+     * Calls onFailed(-15, msg) if the camera does not come online within the timeout.
+     */
+    private void wakeCamera(String snNum, ISetDeviceParamsCallback callback) {
+        MeariIotManager.getInstance().init();
+        MeariIotManager.getInstance().wakeDevice(snNum);
+        new Thread(() -> {
+            final int maxAttempts = 10;
+            final int intervalMs  = 3_000;
+            for (int i = 0; i < maxAttempts; i++) {
+                try { Thread.sleep(intervalMs); }
+                catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
+
+                CountDownLatch latch  = new CountDownLatch(1);
+                boolean[] online      = {false};
+                MeariIotManager.getInstance().getDeviceStatusGet(snNum,
+                    new IGetDeviceStatusCallback() {
+                        @Override public void onSuccess(boolean isOnline) {
+                            online[0] = isOnline;
+                            latch.countDown();
+                        }
+                        @Override public void onFailed(int code, String msg) {
+                            latch.countDown(); // treat HTTP error as "not yet online"
+                        }
+                    });
+                try { latch.await(5, TimeUnit.SECONDS); }
+                catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
+
+                Log.d("CamManager", "wakeCamera poll " + (i + 1) + "/" + maxAttempts
+                        + " sn=" + snNum + " online=" + online[0]);
+                if (online[0]) { callback.onSuccess(); return; }
+            }
+            callback.onFailed(-15, "Camera did not come online within "
+                    + (maxAttempts * intervalMs / 1000) + "s");
+        }).start();
+    }
+
     public void takeAPicture(Context context, String camera, MeariDeviceListener event) {
 
         loginAndInitList(new IDoSomething() {
@@ -393,59 +441,62 @@ public class CamManager {
                         .getAbsolutePath() + "/CloudEdge4TaskerSnapshot" + System.currentTimeMillis() + ".jpg";
                 int videoId = Integer.parseInt(online.avogadro.mearitaskerplugin.CommonUtils.getDefaultStreamId(finalCameraInfo));
 
-                // Battery cameras sleep between uses. Wake the device and wait for it to
-                // start listening for P2P connections (same pattern as wakeAndDoSomethingOnCameras).
-                MeariIotManager.getInstance().init();
-                MeariIotManager.getInstance().wakeDevice(finalCameraInfo.getSnNum());
-                try {
-                    Thread.sleep(20 * 1000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-
-                deviceController.startConnect(new MeariDeviceListener() {
+                // Battery cameras sleep between uses. Wake the device and poll until it is
+                // online before attempting P2P connection (adaptive wait, max ~30 s).
+                wakeCamera(finalCameraInfo.getSnNum(), new ISetDeviceParamsCallback() {
                     @Override
-                    public void onSuccess(String connectMsg) {
-                        // startPreview triggers native ffmpeg decode into dummySurface.renderer.y/u/v.
-                        // onSuccess fires via the native startPlaySuccessCallback() JNI call
-                        // when the first frame is decoded - no sleep required.
-                        deviceController.startPreview(dummySurface, videoId, new MeariDeviceListener() {
+                    public void onSuccess() {
+                        deviceController.startConnect(new MeariDeviceListener() {
                             @Override
-                            public void onSuccess(String firstFrameMsg) {
-                                // First frame is in the native ffmpeg buffer. snapshot() in SOFT
-                                // mode calls native snapShot() which reads that buffer and writes JPEG.
-                                deviceController.snapshot(path, new MeariDeviceListener() {
+                            public void onSuccess(String connectMsg) {
+                                // startPreview triggers native ffmpeg decode into dummySurface.renderer.y/u/v.
+                                // onSuccess fires via the native startPlaySuccessCallback() JNI call
+                                // when the first frame is decoded - no sleep required.
+                                deviceController.startPreview(dummySurface, videoId, new MeariDeviceListener() {
                                     @Override
-                                    public void onSuccess(String snapshotMsg) {
-                                        deviceController.stopPreview(null);
-                                        deviceController.stopConnect(null);
-                                        PPSMediaCodec.setGlobalEnable(true);
-                                        event.onSuccess(path);
+                                    public void onSuccess(String firstFrameMsg) {
+                                        // First frame is in the native ffmpeg buffer. snapshot() in SOFT
+                                        // mode calls native snapShot() which reads that buffer and writes JPEG.
+                                        deviceController.snapshot(path, new MeariDeviceListener() {
+                                            @Override
+                                            public void onSuccess(String snapshotMsg) {
+                                                deviceController.stopPreview(NOOP_DEVICE_LISTENER);
+                                                deviceController.stopConnect(NOOP_DEVICE_LISTENER);
+                                                PPSMediaCodec.setGlobalEnable(true);
+                                                event.onSuccess(path);
+                                            }
+
+                                            @Override
+                                            public void onFailed(String errorMsg) {
+                                                deviceController.stopPreview(NOOP_DEVICE_LISTENER);
+                                                deviceController.stopConnect(NOOP_DEVICE_LISTENER);
+                                                PPSMediaCodec.setGlobalEnable(true);
+                                                event.onFailed(errorMsg);
+                                            }
+                                        });
                                     }
 
                                     @Override
                                     public void onFailed(String errorMsg) {
-                                        deviceController.stopPreview(null);
-                                        deviceController.stopConnect(null);
+                                        deviceController.stopConnect(NOOP_DEVICE_LISTENER);
                                         PPSMediaCodec.setGlobalEnable(true);
                                         event.onFailed(errorMsg);
                                     }
-                                });
+                                }, null);
                             }
 
                             @Override
                             public void onFailed(String errorMsg) {
-                                deviceController.stopConnect(null);
                                 PPSMediaCodec.setGlobalEnable(true);
                                 event.onFailed(errorMsg);
                             }
-                        }, null);
+                        });
                     }
 
                     @Override
-                    public void onFailed(String errorMsg) {
+                    public void onFailed(int code, String msg) {
                         PPSMediaCodec.setGlobalEnable(true);
-                        event.onFailed(errorMsg);
+                        event.onFailed(msg);
                     }
                 });
             }
