@@ -439,7 +439,7 @@ public class CamManager {
                 PPSGLSurfaceView dummySurface = new PPSGLSurfaceView(context, 320, 240);
                 String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
                         .getAbsolutePath() + "/CloudEdge4TaskerSnapshot" + System.currentTimeMillis() + ".jpg";
-                int videoId = Integer.parseInt(online.avogadro.mearitaskerplugin.CommonUtils.getDefaultStreamId(finalCameraInfo));
+                int videoId = 0; // main stream (HD); was: CommonUtils.getDefaultStreamId() which returned sub-stream (1) → 640×360
 
                 // Battery cameras sleep between uses. Wake the device and poll until it is
                 // online before attempting P2P connection (adaptive wait, max ~30 s).
