@@ -10,6 +10,9 @@
 /captures
 .externalNativeBuild
 
+core-sdk-device-500-20230801-decompiled/
+core-sdk-meari-500-20230801-decompiled/
+
 app/debug
 app/release
 
