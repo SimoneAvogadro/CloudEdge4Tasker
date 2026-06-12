@@ -22,4 +22,11 @@
         android:minHeight="48dp"
         android:text="@string/pref_group_by_first_word" />
 
+    <Button
+        android:id="@+id/buttonDownloadLogs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/pref_download_logs" />
+
 </LinearLayout>

@@ -8,4 +8,7 @@
     <string name="settings_title">Settings</string>
     <string name="pref_show_camera_id">Show camera ID</string>
     <string name="pref_group_by_first_word">Group by first word</string>
+    <string name="pref_download_logs">Download logs</string>
+    <string name="logs_saved_to">Logs saved to %1$s</string>
+    <string name="logs_save_failed">Failed to save logs</string>
 </resources>

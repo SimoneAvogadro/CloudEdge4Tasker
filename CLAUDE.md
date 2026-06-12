@@ -260,6 +260,12 @@ Selector-based Tasker actions follow:
 For wake-up operations (siren, light), `wakeAndDoSomethingOnCameras()` wakes all matched cameras, waits 10s once, then executes the action on each.
 
 ### Async Operations
+- EVERY Tasker action MUST declare a real `@TaskerOutputObject` output class (see `CameraActionOutput`): MacroDroid never completes plugin actions whose output type is `Unit` (no output variables) — the macro hangs forever on the action. Actions with real outputs (e.g. Download Alert Image) always worked. Do NOT use the `NoOutput` runner/config-helper variants.
+- Never remove/replace the library's `BroadcastReceiverAction` via manifest `tools:node="remove"`: hosts (MacroDroid) cache the receiver component at action-config time and send the fire broadcast explicitly to it — replacing it breaks all existing configured actions.
+- Tasker action runners are synchronous: they block on `runBlockingCameraAction` (tasker/BlockingCameraAction.kt, CountDownLatch, 45s timeout) until the CamManager callback fires, then return `CameraActionOutput` (%result).
+- Bulk operations report aggregate completion via `doSomethingOnCamerasAndReport` (event fires once, after ALL cameras answered; onFailed carries "N/M cameras failed")
+- CamManager error paths (login failed, no credentials, device list failure) must always invoke the caller's callback, not just Toast — otherwise the blocking runners time out
+- Toasts in CamManager go through `toast()` (main-looper Handler): SDK callbacks can arrive on native non-Looper threads where `Toast.makeText` throws
 - Most camera operations use callbacks (`ISetDeviceParamsCallback`)
 - Image downloads use `AsyncTask` pattern
 - Device wake-up includes hardcoded 10-second delays (fireSirenOnCameras, turnOnLightOnCameras)

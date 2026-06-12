@@ -7,8 +7,11 @@ import androidx.appcompat.widget.SwitchCompat;
 import androidx.preference.PreferenceManager;
 
 import android.content.SharedPreferences;
+import android.widget.Button;
+import android.widget.Toast;
 
 import online.avogadro.mearitaskerplugin.R;
+import online.avogadro.mearitaskerplugin.app.LogDumper;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -38,6 +41,22 @@ public class SettingsActivity extends AppCompatActivity {
 
         switchGroup.setOnCheckedChangeListener((buttonView, isChecked) ->
                 prefs.edit().putBoolean(PREF_GROUP_BY_FIRST_WORD, isChecked).apply());
+
+        Button downloadLogs = findViewById(R.id.buttonDownloadLogs);
+        downloadLogs.setOnClickListener(v -> {
+            downloadLogs.setEnabled(false);
+            new Thread(() -> {
+                String location = LogDumper.dumpToDownloads(this);
+                runOnUiThread(() -> {
+                    downloadLogs.setEnabled(true);
+                    if (location != null) {
+                        Toast.makeText(this, getString(R.string.logs_saved_to, location), Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(this, R.string.logs_save_failed, Toast.LENGTH_LONG).show();
+                    }
+                });
+            }).start();
+        });
     }
 
     @Override

@@ -13,17 +13,16 @@ import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelper
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultErrorWithOutput
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
 import com.meari.sdk.callback.ISetDeviceParamsCallback
 import online.avogadro.mearitaskerplugin.device.CamManager
 import online.avogadro.mearitaskerplugin.databinding.ActivityConfigTriggerCameraLightBinding
 
 class TurnOnLightActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) :
-	TaskerPluginConfigHelper<DownloadLastCameraImageInput, Unit, TurnOnLightActionRunner>(config), HelperHolder {
+	TaskerPluginConfigHelper<DownloadLastCameraImageInput, CameraActionOutput, TurnOnLightActionRunner>(config), HelperHolder {
     override val runnerClass: Class<TurnOnLightActionRunner>
         get() = TurnOnLightActionRunner::class.java
     override val inputClass = DownloadLastCameraImageInput::class.java
-    override val outputClass = Unit::class.java
+    override val outputClass = CameraActionOutput::class.java
     override fun addToStringBlurb(input: TaskerInput<DownloadLastCameraImageInput>, blurbBuilder: StringBuilder) {
         // blurbBuilder.append(" ")
     }
@@ -133,8 +132,8 @@ abstract class AbstractCameraActionConfig : Activity(), TaskerPluginConfig<Downl
     }
 }
 
-class TurnOnLightActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput, Unit>() {
-    override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<Unit> {
+class TurnOnLightActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput, CameraActionOutput>() {
+    override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<CameraActionOutput> {
         val cm = CamManager.get(context)
         val camID = input.regular.cameraID
 
@@ -142,17 +141,6 @@ class TurnOnLightActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImage
             return TaskerPluginResultErrorWithOutput(-1, "Missing camera selector parameter")
         }
 
-        var resultMessage = ""
-        cm.turnOnLightOnCameras(camID, object : ISetDeviceParamsCallback {
-            override fun onSuccess() { resultMessage = "ok" }
-            override fun onFailed(i: Int, s: String?) {
-                resultMessage = "error: $s"
-            }
-        })
-
-        if (resultMessage.startsWith("error:"))
-            return TaskerPluginResultErrorWithOutput(-1, resultMessage)
-        else
-            return TaskerPluginResultSucess()
+        return runBlockingCameraAction("TurnOnLight") { cb -> cm.turnOnLightOnCameras(camID, cb) }
     }
 }

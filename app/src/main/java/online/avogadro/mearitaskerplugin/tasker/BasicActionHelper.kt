@@ -6,15 +6,12 @@ import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfig
 import com.joaomgcd.taskerpluginlibrary.config.TaskerPluginConfigHelper
 import com.joaomgcd.taskerpluginlibrary.input.TaskerInput
 import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResult
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultErrorWithOutput
-import com.joaomgcd.taskerpluginlibrary.runner.TaskerPluginResultSucess
-import com.meari.sdk.callback.ISetDeviceParamsCallback
 import online.avogadro.mearitaskerplugin.device.CamManager
 
-class BasicActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput, Unit, BasicActionRunner>(config), HelperHolder {
+class BasicActionHelper(config: TaskerPluginConfig<DownloadLastCameraImageInput>) : TaskerPluginConfigHelper<DownloadLastCameraImageInput, CameraActionOutput, BasicActionRunner>(config), HelperHolder {
     override val runnerClass: Class<BasicActionRunner> get() = BasicActionRunner::class.java
     override val inputClass = DownloadLastCameraImageInput::class.java
-    override val outputClass = Unit::class.java
+    override val outputClass = CameraActionOutput::class.java
 
     override fun addToStringBlurb(input: TaskerInput<DownloadLastCameraImageInput>, blurbBuilder: StringBuilder) {
         // Enable PIR People detection on all cameras
@@ -30,9 +27,8 @@ class ActivityConfigBasicAction : AbstractCameraActionConfig() {
     }
 }
 
-class BasicActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput, Unit>() {
-    override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<Unit> {
-        var result = ""
+class BasicActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput, CameraActionOutput>() {
+    override fun run(context: Context, input: TaskerInput<DownloadLastCameraImageInput>): TaskerPluginResult<CameraActionOutput> {
         val cm = CamManager.get(context)
 
         // backward compatibility for actions configured before the new input parameter! (it was  input: TaskerInput<Unit>)
@@ -43,14 +39,6 @@ class BasicActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImageInput,
             // ignore, old config which did not come with an input
         }
 
-        cm.enableCamerasPIR(cameraID, object : ISetDeviceParamsCallback {
-            override fun onSuccess() { result = "ok" }
-            override fun onFailed(i: Int, s: String?) { result = "error: $s" }
-        })
-
-        if (result.startsWith("error:"))
-            return TaskerPluginResultErrorWithOutput(-1, result)
-        else
-            return TaskerPluginResultSucess()
+        return runBlockingCameraAction("EnablePIR") { cb -> cm.enableCamerasPIR(cameraID, cb) }
     }
 }

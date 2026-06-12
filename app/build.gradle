@@ -2,6 +2,18 @@ apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 apply plugin: 'com.google.gms.google-services'
 
+// Read signing credentials from local.properties (git-ignored).
+// Required keys: KEYSTORE_FILE, KEY_ALIAS, KEYSTORE_PASSWORD, KEY_PASSWORD.
+def signingProps = new Properties()
+def signingPropsFile = rootProject.file('local.properties')
+if (signingPropsFile.exists()) {
+    signingPropsFile.withInputStream { signingProps.load(it) }
+}
+def hasReleaseSigning = signingProps['KEYSTORE_FILE'] \
+        && signingProps['KEY_ALIAS'] \
+        && signingProps['KEYSTORE_PASSWORD'] \
+        && signingProps['KEY_PASSWORD']
+
 android {
     compileSdkVersion 34
     buildToolsVersion "30.0.3"
@@ -13,8 +25,8 @@ android {
         applicationId "online.avogadro.mearitaskerplugin"
         minSdkVersion 24
         targetSdkVersion 33
-        versionCode 434
-        versionName "4.3.4"
+        versionCode 1910
+        versionName "1.9.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         multiDexEnabled = true
 
@@ -23,10 +35,24 @@ android {
             abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(signingProps['KEYSTORE_FILE'])
+                storePassword signingProps['KEYSTORE_PASSWORD']
+                keyAlias signingProps['KEY_ALIAS']
+                keyPassword signingProps['KEY_PASSWORD']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 

@@ -7,6 +7,19 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.9.1 - All actions now complete correctly in MacroDroid (no more macros stuck on the action)
+ * FIXED: Enable PIR, Disable PIR, Enable Siren, Disable Siren, Fire Siren and Turn On Light left
+   MacroDroid waiting forever on the action: MacroDroid never finalizes plugin actions that declare
+   no output variables, so every action now returns a %result output variable
+ * IMPROVED: actions are now synchronous: the host continues only after the operation really
+   completed on all targeted cameras (45s safety timeout)
+ * IMPROVED: per-camera error reporting: on partial failures %errmsg contains "N/M cameras failed"
+   with the first error detail; login/device-list failures are reported too instead of being lost
+ * FIXED: possible crash when SDK callbacks arrived on background threads (Toast without Looper)
+ * ADDED: Settings > Download logs: exports the app log to the Downloads folder for bug reports
+ * NOTE: actions saved with older versions keep working; if a macro still hangs on an old action,
+   open the action in MacroDroid and press OK once to re-save it
+
 V 1.9.0 - Take Picture action now produces full-resolution snapshots
  * FIXED: crash (NPE) in Take Picture action that caused the Tasker plugin service to die
  * IMPROVED: Take Picture now uses the camera's main stream (stream 0) instead of the sub-stream,
