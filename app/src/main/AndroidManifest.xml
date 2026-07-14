@@ -23,6 +23,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true"
         android:theme="@style/AppTheme">
         <activity android:name=".user.BuyCloudServiceActivity"/>
         <activity android:name=".user.CloudStatusActivity" />
@@ -88,6 +89,15 @@
             android:exported="true"
             android:icon="@mipmap/image_download"
             android:label="Retrieve last alert image from a camera">
+            <intent-filter>
+                <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".tasker.ActivityConfigDownloadLastCameraVideoAction"
+            android:exported="true"
+            android:icon="@mipmap/image_download"
+            android:label="Retrieve last alert video from a camera">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>

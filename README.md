@@ -7,6 +7,15 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.10.0 - New action: download the video of the last alert
+ * ADDED: "Retrieve last alert video from a camera" action: downloads the cloud video clip
+   associated with the most recent alert that has one (searching up to 10 days back), saves it
+   as an .mp4 in the Movies folder and returns its path in the %video variable
+ * NOTE: alert videos are hosted on the CloudEdge cloud, so they are available only for
+   events that have a cloud event recording
+ * FIXED: on Android 10 saving files to the public Movies/Pictures folders now works
+   (requestLegacyExternalStorage); this also fixes the Take Picture action on Android 10
+
 V 1.9.1 - All actions now complete correctly in MacroDroid (no more macros stuck on the action)
  * FIXED: Enable PIR, Disable PIR, Enable Siren, Disable Siren, Fire Siren and Turn On Light left
    MacroDroid waiting forever on the action: MacroDroid never finalizes plugin actions that declare

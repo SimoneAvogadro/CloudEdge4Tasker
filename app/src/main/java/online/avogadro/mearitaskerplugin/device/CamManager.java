@@ -18,6 +18,7 @@ import com.meari.sdk.MeariDeviceController;
 import com.meari.sdk.MeariIotManager;
 import com.meari.sdk.MeariSmartSdk;
 import com.meari.sdk.MeariUser;
+import com.meari.sdk.VideoInfo;
 import com.meari.sdk.bean.CameraInfo;
 import com.meari.sdk.bean.DeviceAlarmMessage;
 import com.meari.sdk.bean.MeariDevice;
@@ -891,6 +892,134 @@ public class CamManager {
                 res.onError(i,s);
             }
         });
+    }
+
+    /**
+     * Download the video of the most recent alert that has one, searching up to 10 days back.
+     * Alert videos are cloud-hosted HLS .ts segments listed in the same /v3/app/event/list
+     * response used for alert images; events without a cloud event recording have an empty list.
+     * Will return the downloaded video's local path in CameraInfo.firmID (same hack as images).
+     *
+     * @param cameraID
+     * @param res
+     */
+    public void getLastAlertVideo(long cameraID, IDeviceAlarmMessagesCallback res) {
+        getLastAlertVideo(new Date(), cameraID, res);
+    }
+
+    public void getLastAlertVideo(Date date, long cameraID, IDeviceAlarmMessagesCallback res) {
+        if (Util.getDaysBetween(new Date(), date) > 10) { // don't look more than 10 days back
+            res.onError(-1, "no alert video available in the last 10 days");
+            return;
+        }
+
+        SimpleDateFormat DateFor = new SimpleDateFormat("yyyyMMdd");
+        String dateNow = DateFor.format(date);
+        MeariUser.getInstance().getAlertMsgWithVideo(cameraID, dateNow, "1", 1, 0, null, new IDeviceAlarmMessagesCallback() {
+            @Override
+            public void onSuccess(List<DeviceAlarmMessage> list, CameraInfo cameraInfo) {
+                Log.d("CamManager", "getLastAlertVideo " + dateNow + ": " + list.size() + " events, cloudStatus="
+                        + cameraInfo.getCloudStatus() + " cst=" + cameraInfo.getCst() + " evt=" + cameraInfo.getEvt());
+                DeviceAlarmMessage latest = latestMessageWithVideo(list);
+                if (latest == null) {
+                    getLastAlertVideo(Util.sendDateBackOneDay(date), cameraID, res);
+                } else {
+                    Log.d("CamManager", "getLastAlertVideo event " + latest.getEventTime() + ": "
+                            + latest.getVideoUrl().size() + " segments, duration=" + latest.getVideoDuration()
+                            + "s, storageType=" + latest.getStorageType() + " cloudType=" + latest.getCloudType());
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            // the callback MUST always fire, or the blocking runner times out
+                            try {
+                                String path = downloadAlertVideo(latest.getVideoUrl(), cameraInfo.getSnNum());
+                                if (path == null) {
+                                    res.onError(-1, "failed to download alert video");
+                                } else {
+                                    cameraInfo.setFirmID(path);
+                                    res.onSuccess(new ArrayList<DeviceAlarmMessage>(), cameraInfo);
+                                }
+                            } catch (Throwable t) {
+                                Log.e("CamManager", "downloadAlertVideo failed", t);
+                                res.onError(-1, "failed to download alert video: " + t.getMessage());
+                            }
+                        }
+                    }).start();
+                }
+            }
+
+            @Override
+            public void onError(int i, String s) {
+                res.onError(i, s);
+            }
+        });
+    }
+
+    private static DeviceAlarmMessage latestMessageWithVideo(List<DeviceAlarmMessage> list) {
+        DeviceAlarmMessage latest = null;
+        for (DeviceAlarmMessage m : list) {
+            if (m.getVideoUrl() == null || m.getVideoUrl().isEmpty())
+                continue;
+            if (latest == null || parseEventTime(m) > parseEventTime(latest))
+                latest = m;
+        }
+        return latest;
+    }
+
+    private static long parseEventTime(DeviceAlarmMessage m) {
+        try {
+            return Long.parseLong(m.getEventTime());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    // ffmpegCmd is a single native command-line entry point with global state:
+    // never run two invocations concurrently
+    private static final Object FFMPEG_LOCK = new Object();
+
+    /**
+     * Download and decrypt an alert video (list of HLS .ts segment URLs) into a public
+     * Movies/*.mp4 file via the SDK's bundled ffmpeg. Blocking: call from a background thread.
+     * Returns the local mp4 path, or null on failure.
+     */
+    static String downloadAlertVideo(List<VideoInfo> segments, String cameraSN) {
+        Context ctx = MeariApplication.getInstance();
+        String m3u8Path = new File(ctx.getCacheDir(),
+                "CloudEdge4TaskerAlert" + System.currentTimeMillis() + ".m3u8").getAbsolutePath();
+        File moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
+        if (!moviesDir.exists() && !moviesDir.mkdirs()) {
+            Log.e("CamManager", "downloadAlertVideo: cannot create " + moviesDir);
+            return null;
+        }
+        String mp4Path = new File(moviesDir,
+                "CloudEdge4TaskerAlert" + System.currentTimeMillis() + ".mp4").getAbsolutePath();
+
+        // Cloud media is normally encrypted with the licence id derived from the camera SN
+        // (the same key DeviceCloudPlayActivity feeds the cloud player); retry without key
+        // for unencrypted setups. On failure the SDK deletes the mp4 but keeps the m3u8,
+        // so the playlist can be reused across attempts.
+        String licence = (cameraSN == null || cameraSN.isEmpty()) ? "" : SdkUtils.formatLicenceId(cameraSN);
+        String[] decKeys = licence.isEmpty() ? new String[]{""} : new String[]{licence, ""};
+        for (String decKey : decKeys) {
+            if (!new File(m3u8Path).exists()) {
+                SdkUtils.getM3U8Path(segments, m3u8Path); // the SDK deletes the playlist on rc==0
+            }
+            int rc;
+            synchronized (FFMPEG_LOCK) {
+                rc = SdkUtils.downloadMp4FromM3U8(m3u8Path, mp4Path, decKey);
+            }
+            File mp4 = new File(mp4Path);
+            Log.d("CamManager", "downloadAlertVideo ffmpeg rc=" + rc + " size=" + mp4.length()
+                    + " decKey=" + (decKey.isEmpty() ? "none" : "licenceId"));
+            if (rc == 0 && mp4.length() > 0) {
+                MediaScannerConnection.scanFile(ctx, new String[]{mp4Path}, new String[]{"video/mp4"}, null);
+                return mp4Path;
+            }
+            mp4.delete(); // rc==0 with empty file: don't leave the stub around for the next attempt
+        }
+        new File(m3u8Path).delete();
+        return null;
     }
 
     public static byte[] getImageBytes(String imageUrl) {

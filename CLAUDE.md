@@ -51,6 +51,7 @@ online.avogadro.mearitaskerplugin/
 │   ├── MyFirebaseMessagingService.java  # FCM push notifications
 │   ├── MyMessageHandler.java     # MQTT message handling
 │   ├── SharedPreferencesHelper.java    # AES-encrypted credential storage
+│   ├── LogDumper.kt              # Dump app logcat to Downloads for bug reports
 │   └── Util.java                 # Metadata and date utilities
 ├── device/
 │   ├── CamManager.java           # Core singleton for all camera ops
@@ -70,10 +71,14 @@ online.avogadro.mearitaskerplugin/
 │   ├── EnableSirenActionHelper.kt    # Enable siren on all cameras
 │   ├── DisableSirenActionHelper.kt   # Disable siren on all cameras
 │   ├── DownloadLastCameraImageActionHelper.kt # Download alert image
+│   ├── DownloadLastCameraVideoActionHelper.kt # Download alert video
 │   ├── TakePictureActionHelper.kt    # Take live snapshot
 │   ├── TriggerCameraSirenActionHelper.kt  # Fire siren on camera(s)
+│   ├── BlockingCameraAction.kt       # runBlockingCameraAction: sync bridge (CountDownLatch, 45s)
+│   ├── CameraActionOutput.kt         # Shared @TaskerOutputObject output (%result)
 │   ├── DownloadLastCameraImageInput.kt    # Input: cameraID, cameraName
 │   ├── DownloadLastCameraImageOutput.kt   # Output: image file path
+│   ├── DownloadLastCameraVideoOutput.kt   # Output: video file path
 │   └── events/
 │       ├── ActivityConfigCameraAlarmEvent.kt  # Event config UI
 │       ├── CameraAlarmRaiser.kt       # Triggers Tasker events
@@ -131,9 +136,11 @@ Central singleton (`CamManager.get(context)`) for all camera operations.
 - `fireSirenAlarm(context, cameraID, callback)` - Includes 10s wake-up delay
 
 **Image/Media:**
-- `takeAPicture(context, cameraID, listener)` - Live snapshot (90s timeout)
+- `takeAPicture(context, cameraID, listener)` - Live snapshot (90s timeout). Wakes the camera with adaptive polling (max ~30s), previews on native stream 0 (full resolution), saves the JPEG and registers it in the gallery via `MediaScannerConnection`
 - `getLastAlertImage(cameraID, callback)` - Latest alert image from today
 - `getLastAlertImage(date, cameraID, callback)` - Alert image from specific date (searches up to 10 days back)
+- `getLastAlertVideo(cameraID, callback)` / `getLastAlertVideo(date, cameraID, callback)` - Latest alert video: picks the most recent alarm message with a non-empty `videoUrl` segment list (searches up to 10 days back), downloads it to Movies/*.mp4 via `downloadAlertVideo`, returns the local path in `CameraInfo.firmID` (same hack as images)
+- `downloadAlertVideo(segments, cameraSN)` - Static, blocking: builds a local .m3u8 from the HLS segments and remuxes to mp4 via the SDK's bundled ffmpeg (`SdkUtils.downloadMp4FromM3U8`, decKey = `formatLicenceId(SN)` with keyless retry); serialized by `FFMPEG_LOCK`
 - `getImageBytes(imageUrl)` - Static method to download image bytes from URL
 
 #### 2. Tasker Actions (`tasker/` package)
@@ -150,18 +157,20 @@ Helpers must implement `HelperHolder` interface (defines `finishForTasker()` and
 
 | Action | Helper | Config Activity | Input/Output | Description |
 |--------|--------|-----------------|--------------|-------------|
-| Enable PIR | `BasicActionHelper` | `ActivityConfigBasicAction` | `DownloadLastCameraImageInput` → `Unit` | Enable motion detection (supports selectors: `*`, name, glob, ID) |
-| Disable PIR | `DisableAlarmsHelper` | `ActivityConfigDisableAlarms` | `DownloadLastCameraImageInput` → `Unit` | Disable motion detection (supports selectors) |
-| Enable Siren | `EnableSirenActionHelper` | `ActivityConfigEnableSirenAction` | `Unit` → `Unit` | Enable siren alarm on all cameras |
-| Disable Siren | `DisableSirenActionHelper` | `ActivityConfigDisableSirenAction` | `Unit` → `Unit` | Disable siren alarm on all cameras |
+| Enable PIR | `BasicActionHelper` | `ActivityConfigBasicAction` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Enable motion detection (supports selectors: `*`, name, glob, ID) |
+| Disable PIR | `DisableAlarmsHelper` | `ActivityConfigDisableAlarms` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Disable motion detection (supports selectors) |
+| Enable Siren | `EnableSirenActionHelper` | `ActivityConfigEnableSirenAction` | `Unit` → `CameraActionOutput` | Enable siren alarm on all cameras |
+| Disable Siren | `DisableSirenActionHelper` | `ActivityConfigDisableSirenAction` | `Unit` → `CameraActionOutput` | Disable siren alarm on all cameras |
 | Download Alert Image | `DownloadLastCameraImageActionHelper` | `ActivityConfigDownloadLastCameraImageAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Download latest alert image (30s timeout, single camera only) |
-| Take Picture | `TakePictureActionHelper` | `ActivityConfigTakePictureAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Capture live snapshot (90s timeout, single camera only) |
-| Fire Siren | `TriggerCameraSirenActionHelper` | `ActivityConfigTriggerSirenAction` | `DownloadLastCameraImageInput` → `Unit` | Fire siren (supports selectors, 10s wake-up) |
-| Turn On Light | `TurnOnLightActionHelper` | `ActivityConfigTurnOnLightAction` | `DownloadLastCameraImageInput` → `Unit` | Turn on camera light (supports selectors, 10s wake-up) |
+| Download Alert Video | `DownloadLastCameraVideoActionHelper` | `ActivityConfigDownloadLastCameraVideoAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraVideoOutput` | Download latest alert video, cloud-hosted (55s timeout, single camera only) |
+| Take Picture | `TakePictureActionHelper` | `ActivityConfigTakePictureAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Capture live snapshot at full resolution (90s timeout, single camera only) |
+| Fire Siren | `TriggerCameraSirenActionHelper` | `ActivityConfigTriggerSirenAction` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Fire siren (supports selectors, 10s wake-up) |
+| Turn On Light | `TurnOnLightActionHelper` | `ActivityConfigTurnOnLightAction` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Turn on camera light (supports selectors, 10s wake-up) |
 
 **Input/Output classes:**
 - `DownloadLastCameraImageInput` - Fields: `cameraID` (String), `cameraName` (String)
 - `DownloadLastCameraImageOutput` - Fields: image file path
+- `CameraActionOutput` - Fields: `result` (String, `%result`) — shared output for actions with no natural output (see Async Operations: MacroDroid requires a real output class)
 
 **CameraResolver** (`tasker/CameraResolver.kt`):
 Resolves a selector string to a list of matching `CameraInfo` objects:
@@ -247,6 +256,8 @@ Main screen showing all cameras in a RecyclerView.
 | `PREF_SHOW_CAMERA_ID` | Boolean | true | Show camera ID in device list |
 | `PREF_GROUP_BY_FIRST_WORD` | Boolean | false | Enable tab filtering by camera name prefix |
 
+Also hosts a "save log" button that calls `LogDumper.dumpToDownloads()` (app/LogDumper.kt): dumps the app's own logcat (including TaskerPluginLibrary and Meari SDK lines) to a timestamped text file in Downloads, for bug reports.
+
 ## Key Patterns
 
 ### Camera Operation Pattern
@@ -269,7 +280,7 @@ For wake-up operations (siren, light), `wakeAndDoSomethingOnCameras()` wakes all
 - Most camera operations use callbacks (`ISetDeviceParamsCallback`)
 - Image downloads use `AsyncTask` pattern
 - Device wake-up includes hardcoded 10-second delays (fireSirenOnCameras, turnOnLightOnCameras)
-- Image download timeouts: 30s for alert images, 90s for live pictures
+- Image download timeouts: 30s for alert images, 55s for alert videos, 90s for live pictures
 
 ## Security Considerations
 
@@ -294,12 +305,18 @@ For wake-up operations (siren, light), `wakeAndDoSomethingOnCameras()` wakes all
 ### Stream IDs
 Two separate stream families exist for live preview:
 - **Native streams (0, 1)**: Direct P2P main/sub stream. Stream 0 = full camera resolution (e.g. 3MP). Always prefer stream 0 for max-quality snapshots.
-- **bps2 streams (100–103)**: Power-managed streams negotiated via `bps2` field. Lower quality, designed for live UI preview of battery cameras. `getDefaultStreamId()` in CommonUtils incorrectly directs battery cameras here.
+- **bps2 streams (100–103)**: Power-managed streams negotiated via `bps2` field. Lower quality, designed for live UI preview of battery cameras. `getDefaultStreamId()` in CommonUtils directs battery cameras here — fine for live preview (its only remaining user, DeviceMonitorActivity), but `takeAPicture()` uses stream 0 directly for full-resolution snapshots.
 - **Adaptive stream (105)**: Available if `cameraInfo.getAdb()==1` and `ver>=81`.
 
 `bps2` field is a JSON like `{"0":"2304x1296@15","1":"640x360@25"}` — width×height@fps per stream key.
 Keys "0","1","2","3" in bps2 map to stream IDs 100,101,102,103 respectively.
 `MeariDeviceUtil.getVideoStreamId(cameraInfo)` returns supported native stream IDs (0,1) via `bps` bitmask.
+
+### Alert videos (cloud event clips)
+- `getAlertMsgWithVideo` (endpoint `/v3/app/event/list`) already returns, per `DeviceAlarmMessage`, a `List<VideoInfo>` (`getVideoUrl()`): ordered HLS `.ts` segment URLs `{url, duration}`; empty when the event has no cloud recording
+- Download recipe (used by `CamManager.downloadAlertVideo`): `SdkUtils.getM3U8Path(segments, m3u8Path)` writes a local playlist, then `SdkUtils.downloadMp4FromM3U8(m3u8, mp4, decKey)` runs the bundled native ffmpeg (`MeariFFmpeg.ffmpegCmd`, libmrplayer.so: `x [-dec KEY] -i m3u8 -c copy -y mp4`) producing a plain mp4; returns 0 on success, deletes the m3u8 on success and the mp4 on failure
+- Decryption key = `SdkUtils.formatLicenceId(cameraInfo.getSnNum())` (9-char SNs get zero-padded to 20) — same key `DeviceCloudPlayActivity` feeds the cloud player via `setDecKey`; unencrypted setups need no `-dec`
+- `ffmpegCmd` is blocking, has no timeout/cancel and is not known to be reentrant: call from a worker thread, serialize invocations
 
 ### Alert image / recording resolution (IoT commands, to investigate)
 - `MeariUser.setShotResolution(int resolution, int connectType, callback)` — IoT cmd "247": sets resolution of camera-side alert snapshots
