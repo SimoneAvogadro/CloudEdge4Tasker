@@ -13,6 +13,11 @@
 core-sdk-device-500-20230801-decompiled/
 core-sdk-meari-500-20230801-decompiled/
 
+# Reference APK/XAPK of the official app + its decompiled output (hundreds of MB)
+apk_latest/
+# Scratch area for local analysis
+tmp/
+
 app/debug
 app/release
 

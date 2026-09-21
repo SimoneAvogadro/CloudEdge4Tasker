@@ -178,7 +178,9 @@ public class CamManager {
         return new IDoSomething() {
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
-                MeariUser.getInstance().setPirDetectionEnable(enableFlag, then);
+                // The camera was set on MeariUser by the caller (doSomethingOnCameras).
+                MeariOpenApi.setIotConfig(MeariUser.getInstance().getCameraInfo(),
+                        MeariOpenApi.IOT_PIR_DET_ENABLE, enableFlag, then);
             }
             @Override
             public String description() {
@@ -191,7 +193,8 @@ public class CamManager {
         return new IDoSomething() {
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
-                MeariUser.getInstance().setFloodCameraVoiceLightAlarmEnable(enableFlag, then);
+                MeariOpenApi.setIotConfig(MeariUser.getInstance().getCameraInfo(),
+                        MeariOpenApi.IOT_SOUND_LIGHT_ENABLE, enableFlag, then);
             }
             @Override
             public String description() {
@@ -216,7 +219,8 @@ public class CamManager {
         doSomethingOnCameras(cameras, new IDoSomething() {
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
-                MeariUser.getInstance().setFlightSirenEnable(1, then);
+                MeariOpenApi.setIotConfig(MeariUser.getInstance().getCameraInfo(),
+                        MeariOpenApi.IOT_SIREN_SWITCH, 1, then);
             }
             @Override
             public String description() { return "Fire siren alarm"; }
@@ -534,7 +538,7 @@ public class CamManager {
                 deviceController.setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setController(deviceController);
-                MeariUser.getInstance().setPirDetectionEnable(enableFlag ,event);
+                MeariOpenApi.setIotConfig(cameraInfo, MeariOpenApi.IOT_PIR_DET_ENABLE, enableFlag, event);
             }
             @Override
             public String description() {
@@ -572,7 +576,7 @@ public class CamManager {
                 deviceController.setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setController(deviceController);
-                MeariUser.getInstance().setFloodCameraVoiceLightAlarmEnable(enableFlag, event);
+                MeariOpenApi.setIotConfig(cameraInfo, MeariOpenApi.IOT_SOUND_LIGHT_ENABLE, enableFlag, event);
             }
             @Override
             public String description() {
@@ -605,11 +609,14 @@ public class CamManager {
                 MeariUser.getInstance().setCameraInfo(cameraInfo);
                 MeariUser.getInstance().setController(deviceController);
 
+                // Pin the camera: the wake-up below is async, so the "current" camera on
+                // MeariUser may have moved on by the time the callback fires.
+                final CameraInfo sirenCamera = cameraInfo;
 
                 wakeCamera(cameraInfo.getSnNum(), new ISetDeviceParamsCallback() {
                     @Override
                     public void onSuccess() {
-                        MeariUser.getInstance().setFlightSirenEnable(1, new ISetDeviceParamsCallback() {
+                        MeariOpenApi.setIotConfig(sirenCamera, MeariOpenApi.IOT_SIREN_SWITCH, 1, new ISetDeviceParamsCallback() {
                             @Override
                             public void onSuccess() {
                                 event.onSuccess();
@@ -661,7 +668,8 @@ public class CamManager {
         wakeAndDoSomethingOnCameras(cameras, new IDoSomething() {
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
-                MeariUser.getInstance().setFlightSirenEnable(1, then);
+                MeariOpenApi.setIotConfig(MeariUser.getInstance().getCameraInfo(),
+                        MeariOpenApi.IOT_SIREN_SWITCH, 1, then);
             }
             @Override
             public String description() { return "Fire siren alarm"; }
@@ -672,7 +680,8 @@ public class CamManager {
         wakeAndDoSomethingOnCameras(cameras, new IDoSomething() {
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
-                MeariUser.getInstance().setFlightLightStatus(1, then);
+                MeariOpenApi.setIotConfig(MeariUser.getInstance().getCameraInfo(),
+                        MeariOpenApi.IOT_LIGHT_SWITCH, 1, then);
             }
             @Override
             public String description() { return "Turn on camera light"; }

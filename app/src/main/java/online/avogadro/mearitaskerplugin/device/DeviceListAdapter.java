@@ -68,7 +68,9 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
         deviceController.setCameraInfo(cameraInfo);
         MeariUser.getInstance().setCameraInfo(cameraInfo);
         MeariUser.getInstance().setController(deviceController);
-        MeariUser.getInstance().getDeviceParams(cameraInfo, new IGetDeviceParamsCallback() {
+        // Read via MeariOpenApi: the SDK's own getDeviceParams() uses the pre-CVE-2026-33357
+        // openapi signature and is rejected with 401 by the current server.
+        MeariOpenApi.getDeviceParams(cameraInfo, new IGetDeviceParamsCallback() {
             @Override
             public void onSuccess(DeviceParams deviceParams) {
                 int pir = deviceParams.getPirDetEnable();
