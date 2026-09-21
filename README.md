@@ -7,7 +7,18 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
-V 1.10.0 - New action: download the video of the last alert
+V 1.10.0 - REQUIRED UPDATE: restores camera control after the CloudEdge server change
+ * FIXED: since mid-September 2026 every camera command (enable/disable detection, enable/disable
+   siren, fire siren, turn on light) and the camera status shown in the list stopped working and
+   failed with "Authorization Failed". Login, the camera list and the alert images kept working,
+   which is why the app looked connected but no command had any effect
+ * WHY: CloudEdge/Meari hardened their servers after a security vulnerability in their cloud API
+   (CVE-2026-33357, published May 2026: the old scheme let anyone query devices that were not
+   theirs). Commands must now be authorised per single camera instead of with one shared app-wide
+   key. The camera SDK bundled in this app dates from 2023 and still used the old scheme, so the
+   server rejected every command. Nothing was wrong on your account or cameras
+ * NOTE: updating is mandatory - older versions cannot control cameras any more, and no
+   workaround exists on the app side other than this fix. The cameras themselves need no change
  * ADDED: "Retrieve last alert video from a camera" action: downloads the cloud video clip
    associated with the most recent alert that has one (searching up to 10 days back), saves it
    as an .mp4 in the Movies folder and returns its path in the %video variable
