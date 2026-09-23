@@ -7,6 +7,12 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.10.1 - shorter action names
+ * CHANGED: the Tasker/MacroDroid action names were too long and got truncated in the plugin
+   picker, making the two "Retrieve last alert..." entries indistinguishable. They are now:
+   Enable PIR, Disable PIR, Enable siren, Disable siren, Last picture, Last video, Fire siren,
+   Take picture, Turn on light. Existing configured actions keep working unchanged
+
 V 1.10.0 - REQUIRED UPDATE: restores camera control after the CloudEdge server change
  * FIXED: since mid-September 2026 every camera command (enable/disable detection, enable/disable
    siren, fire siren, turn on light) and the camera status shown in the list stopped working and

@@ -52,7 +52,7 @@
             android:name=".tasker.ActivityConfigBasicAction"
             android:exported="true"
             android:icon="@mipmap/camera_play"
-            android:label="Enable camera's movement detection">
+            android:label="Enable PIR">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -61,7 +61,7 @@
             android:name=".tasker.ActivityConfigDisableAlarms"
             android:exported="true"
             android:icon="@mipmap/camera_pause"
-            android:label="Disable camera's movement detection">
+            android:label="Disable PIR">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -70,7 +70,7 @@
             android:name=".tasker.ActivityConfigEnableSirenAction"
             android:exported="true"
             android:icon="@mipmap/enable_siren"
-            android:label="Enable Siren Alarm on all cameras">
+            android:label="Enable siren">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -79,7 +79,7 @@
             android:name=".tasker.ActivityConfigDisableSirenAction"
             android:exported="true"
             android:icon="@mipmap/disable_siren"
-            android:label="Disable Siren Alarm on all cameras">
+            android:label="Disable siren">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -88,7 +88,7 @@
             android:name=".tasker.ActivityConfigDownloadLastCameraImageAction"
             android:exported="true"
             android:icon="@mipmap/image_download"
-            android:label="Retrieve last alert image from a camera">
+            android:label="Last picture">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -97,7 +97,7 @@
             android:name=".tasker.ActivityConfigDownloadLastCameraVideoAction"
             android:exported="true"
             android:icon="@mipmap/image_download"
-            android:label="Retrieve last alert video from a camera">
+            android:label="Last video">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -106,7 +106,7 @@
             android:name=".tasker.ActivityConfigTriggerSirenAction"
             android:exported="true"
             android:icon="@mipmap/play_alarm"
-            android:label="Start the siren on the camera">
+            android:label="Fire siren">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -115,7 +115,7 @@
             android:name=".tasker.ActivityConfigTakePictureAction"
             android:exported="true"
             android:icon="@mipmap/image_download"
-            android:label="Takes a live picture from the camera">
+            android:label="Take picture">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -125,7 +125,7 @@
             android:name=".tasker.ActivityConfigTurnOnLightAction"
             android:exported="true"
             android:icon="@mipmap/flashlight"
-            android:label="Turn on camera light">
+            android:label="Turn on light">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
