@@ -1,0 +1,31 @@
+# Line-ending convention: LF in the repository AND in the working tree.
+# This repo lives on a drive shared between Windows git (core.autocrlf=true)
+# and WSL git (core.autocrlf=false): without these rules each side sees every
+# file touched by the other as modified. Attributes override core.autocrlf on
+# every client, so nobody needs to tweak their git config.
+* text=auto eol=lf
+
+# Windows batch files must keep CRLF
+*.bat text eol=crlf
+
+# Shell scripts must be LF
+*.sh text eol=lf
+gradlew text eol=lf
+
+# Binaries: never normalize
+*.aar binary
+*.jar binary
+*.so binary
+*.apk binary
+*.jks binary
+*.keystore binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.mp3 binary
+*.mp4 binary
