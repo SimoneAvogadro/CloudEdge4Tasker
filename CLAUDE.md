@@ -37,6 +37,15 @@ CloudEdge4Tasker is an Android plugin app that integrates CloudEdge/Meari batter
 - Architecture: armeabi-v7a, arm64-v8a
 - viewBinding: enabled
 
+### Line endings (LF everywhere)
+The working tree lives on a Windows drive shared between Windows git (`core.autocrlf=true`) and
+WSL git (`core.autocrlf=false`). `.gitattributes` enforces LF in the repo and on disk for every
+text file (`* text=auto eol=lf`; only `*.bat` are CRLF) so both clients agree regardless of their
+`core.autocrlf`. Rules:
+- Never commit CRLF text files and never add `core.autocrlf`/`core.eol` overrides: the attributes file is the single source of truth
+- If `git status` ever lists dozens of files with whitespace-only diffs (`git diff --ignore-all-space --stat` shows 0 real changes), it is a line-ending drift: fix with `git add --renormalize .`, not by committing the noise
+- New file types that are binary (e.g. new archive/media extensions) must be added to `.gitattributes` as `binary`
+
 ## Architecture Overview
 
 ### Package Structure
