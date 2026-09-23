@@ -67,6 +67,7 @@ online.avogadro.mearitaskerplugin/
 │   ├── DeviceListActivity.java   # Main screen with camera list
 │   ├── DeviceListAdapter.java    # RecyclerView adapter with per-camera controls
 │   ├── DeviceMonitorActivity.java # Live preview/playback
+│   ├── LiveSnapshotTaker.java    # Headless live snapshot (Take Picture action)
 │   ├── DeviceSettingActivity.java # Per-camera settings
 │   ├── DeviceCloudPlayActivity.java # Cloud storage playback
 │   ├── AddDeviceActivity.java    # QR code onboarding
@@ -145,7 +146,7 @@ Central singleton (`CamManager.get(context)`) for all camera operations.
 - `fireSirenAlarm(context, cameraID, callback)` - Includes 10s wake-up delay
 
 **Image/Media:**
-- `takeAPicture(context, cameraID, listener)` - Live snapshot (90s timeout). Wakes the camera with adaptive polling (max ~30s), previews on native stream 0 (full resolution), saves the JPEG and registers it in the gallery via `MediaScannerConnection`
+- `takeAPicture(context, cameraID, listener)` - Live snapshot (50s budget), delegated to `LiveSnapshotTaker` (device/): P2P connect (the native connect wakes battery cameras by itself, no REST wake), soft-decoded off-screen preview on the highest-resolution bps2 stream (`CommonUtils.getMaxResolutionStreamId`), 2s settle, native JPEG snapshot to cache, then copied to Pictures via MediaStore; returns the file path
 - `getLastAlertImage(cameraID, callback)` - Latest alert image from today
 - `getLastAlertImage(date, cameraID, callback)` - Alert image from specific date (searches up to 10 days back)
 - `getLastAlertVideo(cameraID, callback)` / `getLastAlertVideo(date, cameraID, callback)` - Latest alert video: picks the most recent alarm message with a non-empty `videoUrl` segment list (searches up to 10 days back), downloads it to Movies/*.mp4 via `downloadAlertVideo`, returns the local path in `CameraInfo.firmID` (same hack as images)
@@ -172,7 +173,7 @@ Helpers must implement `HelperHolder` interface (defines `finishForTasker()` and
 | Disable Siren | `DisableSirenActionHelper` | `ActivityConfigDisableSirenAction` | `Unit` → `CameraActionOutput` | Disable siren alarm on all cameras |
 | Download Alert Image | `DownloadLastCameraImageActionHelper` | `ActivityConfigDownloadLastCameraImageAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Download latest alert image (30s timeout, single camera only) |
 | Download Alert Video | `DownloadLastCameraVideoActionHelper` | `ActivityConfigDownloadLastCameraVideoAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraVideoOutput` | Download latest alert video, cloud-hosted (55s timeout, single camera only) |
-| Take Picture | `TakePictureActionHelper` | `ActivityConfigTakePictureAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Capture live snapshot at full resolution (90s timeout, single camera only) |
+| Take Picture | `TakePictureActionHelper` | `ActivityConfigTakePictureAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Capture live snapshot at full resolution (50s budget / 55s runner wait, single camera only) |
 | Fire Siren | `TriggerCameraSirenActionHelper` | `ActivityConfigTriggerSirenAction` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Fire siren (supports selectors, 10s wake-up) |
 | Turn On Light | `TurnOnLightActionHelper` | `ActivityConfigTurnOnLightAction` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Turn on camera light (supports selectors, 10s wake-up) |
 
@@ -289,7 +290,7 @@ For wake-up operations (siren, light), `wakeAndDoSomethingOnCameras()` wakes all
 - Most camera operations use callbacks (`ISetDeviceParamsCallback`)
 - Image downloads use `AsyncTask` pattern
 - Device wake-up includes hardcoded 10-second delays (fireSirenOnCameras, turnOnLightOnCameras)
-- Image download timeouts: 30s for alert images, 55s for alert videos, 90s for live pictures
+- Image download timeouts: 30s for alert images, 55s for alert videos, 55s for live pictures
 
 ## Security Considerations
 
@@ -313,12 +314,15 @@ For wake-up operations (siren, light), `wakeAndDoSomethingOnCameras()` wakes all
 
 ### Stream IDs
 Two separate stream families exist for live preview:
-- **Native streams (0, 1)**: Direct P2P main/sub stream. Stream 0 = full camera resolution (e.g. 3MP). Always prefer stream 0 for max-quality snapshots.
-- **bps2 streams (100–103)**: Power-managed streams negotiated via `bps2` field. Lower quality, designed for live UI preview of battery cameras. `getDefaultStreamId()` in CommonUtils directs battery cameras here — fine for live preview (its only remaining user, DeviceMonitorActivity), but `takeAPicture()` uses stream 0 directly for full-resolution snapshots.
+- **Native streams (0, 1)**: Direct P2P main/sub stream, used only when `vst==1` or the camera has no `bps2`. The official app never requests them on bps2 (battery) cameras.
+- **bps2 streams (100–104)**: key k of `bps2` = stream 100+k; official labels 100=SD, 101=HD, 102=FHD (renamed QHD/5MP when ≥2000px wide), 103=UHD. `getDefaultStreamId()` picks the LOWEST key (SD, as the official default) — used by DeviceMonitorActivity; `getMaxResolutionStreamId()` picks the largest w×h — used by `takeAPicture()`.
 - **Adaptive stream (105)**: Available if `cameraInfo.getAdb()==1` and `ver>=81`.
 
-`bps2` field is a JSON like `{"0":"2304x1296@15","1":"640x360@25"}` — width×height@fps per stream key.
-Keys "0","1","2","3" in bps2 map to stream IDs 100,101,102,103 respectively.
+`bps2` field is a JSON like `{"0":"640x360@15","2":"2304x1296@15"}` — width×height@fps per stream key (verified on a real battery cam: 100=640x360, 102=2304x1296, plus 105=auto). The SDK passes it to native as `{"100":{"w":..,"h":..},...}` in the P2P connect string.
+
+### Live snapshot (headless)
+- The native P2P connect sends an `awaken` itself (hirsdk UDP to the Meari server), so battery cameras need no REST wake-up. `MeariIotManager.wakeDevice`/`getDeviceStatusGet` (`/openapi/device/awaken`, `/status`) use the old signature and fail since the 2026-09 server change; the official app now signs awaken with token/t/clientid and no longer calls `/status` at all
+- Off-screen capture requires software decoding (`controller.enableHardDecode(false)`, per controller): the native decoder memcpy's YUV into the `PPSGLSurfaceView` renderer buffers (no GL needed) and `snapshot()` → native `FFmpegPlayer::take_snapshot` encodes the last frame to JPEG at stream resolution. In HARD mode `snapshot()` waits for an OpenGL draw that never happens off-screen
 `MeariDeviceUtil.getVideoStreamId(cameraInfo)` returns supported native stream IDs (0,1) via `bps` bitmask.
 
 ### Alert videos (cloud event clips)
@@ -336,6 +340,6 @@ Keys "0","1","2","3" in bps2 map to stream IDs 100,101,102,103 respectively.
 ## Important Limitations
 
 - Single login session: CloudEdge doesn't allow concurrent logins
-- Wake-up delays: Battery cameras need time to come online (adaptive polling, max 30s)
+- Wake-up delays: Battery cameras need time to come online (adaptive polling, max 30s; live snapshot relies on the P2P connect's own wake-up instead)
 - Image decryption: Uses proprietary MeariMediaUtil.decodePic()
 - Device list cache: 120-second refresh interval

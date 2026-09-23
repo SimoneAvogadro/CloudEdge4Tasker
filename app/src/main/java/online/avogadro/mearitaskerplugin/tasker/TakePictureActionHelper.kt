@@ -48,18 +48,22 @@ class TakePictureActionRunner : TaskerPluginRunnerAction<DownloadLastCameraImage
             }
 
             override fun onFailed(s: String) {
-                Log.e("getLastAlertImage Fail", s)
-                result="error: "+s
+                Log.e("TakePicture", "failed: $s")
+                result = "error: " + s
                 latch.countDown()
             }
         })
 
-        latch.await(90, TimeUnit.SECONDS)
+        // CamManager bounds the operation itself (LiveSnapshotTaker.TOTAL_TIMEOUT_MS = 50s);
+        // this wait must stay below the 60s timeout requested from the host at config time.
+        if (!latch.await(55, TimeUnit.SECONDS)) {
+            return TaskerPluginResultErrorWithOutput(-2, "Timeout taking the live picture")
+        }
 
-        if (result==null || result.startsWith("error:")) {
-            return TaskerPluginResultErrorWithOutput(-1,result)
+        return if (result.startsWith("error:")) {
+            TaskerPluginResultErrorWithOutput(-1, result)
         } else {
-            return TaskerPluginResultSucess(DownloadLastCameraImageOutput(result))
+            TaskerPluginResultSucess(DownloadLastCameraImageOutput(result))
         }
     }
 }

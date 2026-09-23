@@ -405,10 +405,14 @@ public class CamManager {
         }).start();
     }
 
+    /**
+     * Live snapshot at the camera's highest resolution, saved to Pictures.
+     * event.onSuccess receives the saved file path; every failure (login, unknown camera,
+     * P2P, preview, snapshot, timeout) is reported through event.onFailed.
+     * See {@link LiveSnapshotTaker} for the sequence.
+     */
     public void takeAPicture(Context context, String camera, MeariDeviceListener event) {
-
         loginAndInitList(new IDoSomething() {
-
             @Override
             public void doSomething(ISetDeviceParamsCallback then) {
                 CameraInfo cameraInfo = null;
@@ -422,90 +426,21 @@ public class CamManager {
                     event.onFailed("CameraID not found: " + camera);
                     return;
                 }
-                final CameraInfo finalCameraInfo = cameraInfo;
-
-                MeariDeviceController deviceController = new MeariDeviceController();
-                deviceController.setCameraInfo(finalCameraInfo);
-                MeariUser.getInstance().setCameraInfo(finalCameraInfo);
-                MeariUser.getInstance().setController(deviceController);
-
-                // Force SOFT (ffmpeg) decode mode: in SOFT mode, snapshot() calls the native
-                // snapShot() which reads from the ffmpeg frame buffer - no OpenGL/EGL needed,
-                // so the dummy surface below does not need to be attached to any window.
-                PPSMediaCodec.setGlobalEnable(false);
-
-                // Dummy off-screen surface. Its renderer ByteBuffers (y/u/v) are allocated by
-                // the constructor. In SOFT mode, native ffmpeg writes YUV directly to them via
-                // setRenderBuffer() - no EGL context is required for this.
-                PPSGLSurfaceView dummySurface = new PPSGLSurfaceView(context, 320, 240);
-                String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                        .getAbsolutePath() + "/CloudEdge4TaskerSnapshot" + System.currentTimeMillis() + ".jpg";
-                int videoId = 0; // main stream (HD); was: CommonUtils.getDefaultStreamId() which returned sub-stream (1) → 640×360
-
-                // Battery cameras sleep between uses. Wake the device and poll until it is
-                // online before attempting P2P connection (adaptive wait, max ~30 s).
-                wakeCamera(finalCameraInfo.getSnNum(), new ISetDeviceParamsCallback() {
-                    @Override
-                    public void onSuccess() {
-                        deviceController.startConnect(new MeariDeviceListener() {
-                            @Override
-                            public void onSuccess(String connectMsg) {
-                                // startPreview triggers native ffmpeg decode into dummySurface.renderer.y/u/v.
-                                // onSuccess fires via the native startPlaySuccessCallback() JNI call
-                                // when the first frame is decoded - no sleep required.
-                                deviceController.startPreview(dummySurface, videoId, new MeariDeviceListener() {
-                                    @Override
-                                    public void onSuccess(String firstFrameMsg) {
-                                        // First frame is in the native ffmpeg buffer. snapshot() in SOFT
-                                        // mode calls native snapShot() which reads that buffer and writes JPEG.
-                                        deviceController.snapshot(path, new MeariDeviceListener() {
-                                            @Override
-                                            public void onSuccess(String snapshotMsg) {
-                                                deviceController.stopPreview(NOOP_DEVICE_LISTENER);
-                                                deviceController.stopConnect(NOOP_DEVICE_LISTENER);
-                                                PPSMediaCodec.setGlobalEnable(true);
-                                                MediaScannerConnection.scanFile(context, new String[]{path}, new String[]{"image/jpeg"}, null);
-                                                event.onSuccess(path);
-                                            }
-
-                                            @Override
-                                            public void onFailed(String errorMsg) {
-                                                deviceController.stopPreview(NOOP_DEVICE_LISTENER);
-                                                deviceController.stopConnect(NOOP_DEVICE_LISTENER);
-                                                PPSMediaCodec.setGlobalEnable(true);
-                                                event.onFailed(errorMsg);
-                                            }
-                                        });
-                                    }
-
-                                    @Override
-                                    public void onFailed(String errorMsg) {
-                                        deviceController.stopConnect(NOOP_DEVICE_LISTENER);
-                                        PPSMediaCodec.setGlobalEnable(true);
-                                        event.onFailed(errorMsg);
-                                    }
-                                }, null);
-                            }
-
-                            @Override
-                            public void onFailed(String errorMsg) {
-                                PPSMediaCodec.setGlobalEnable(true);
-                                event.onFailed(errorMsg);
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onFailed(int code, String msg) {
-                        PPSMediaCodec.setGlobalEnable(true);
-                        event.onFailed(msg);
-                    }
-                });
+                LiveSnapshotTaker.take(context, cameraInfo, event);
             }
 
             @Override
             public String description() {
                 return "Take a picture";
+            }
+        }, new ISetDeviceParamsCallback() {
+            @Override
+            public void onSuccess() {
+            }
+
+            @Override
+            public void onFailed(int code, String msg) {
+                event.onFailed(msg);
             }
         });
     }

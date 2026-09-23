@@ -7,6 +7,15 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.10.2 - Take Picture action finally works
+ * FIXED: the Take Picture action (live snapshot) never produced a picture. It now connects to
+   the camera (battery cameras are woken up by the connection itself), waits for the live video
+   to stabilize and saves a JPEG at the camera's highest resolution (e.g. 2304x1296) in Pictures,
+   visible in the gallery. %image contains the file path
+ * IMPROVED: Take Picture reports a clear error (login, camera not found, connection, video,
+   timeout) instead of hanging or returning an empty path; it completes within the 60s
+   Tasker/MacroDroid timeout
+
 V 1.10.1 - shorter action names
  * CHANGED: the Tasker/MacroDroid action names were too long and got truncated in the plugin
    picker, making the two "Retrieve last alert..." entries indistinguishable. They are now:
@@ -110,7 +119,6 @@ The detection settings for each camera must/may still be configured individually
 
 Ideas for future improvements:
 * remove all the unused example code from Meari SDK
-* allow taking an high-res picture from a camera
 * allow forcing the alarm sound to trigger on all the camera (e.g. distributed Alarm Siren)
 * allow enabling/disabling selectively a single camera
 
