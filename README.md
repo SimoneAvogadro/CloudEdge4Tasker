@@ -7,6 +7,14 @@ So far tested with cameras sold under the following brands:
 
 License: freely shared but still uncertain, see LICENSE for details 
 
+V 1.10.3 - faster and more reliable siren and light
+ * IMPROVED: Fire siren and Turn on light no longer wait a fixed 10 seconds for the cameras to
+   wake up: each camera is contacted directly and the command is sent as soon as it is awake
+   (usually 3-5 seconds). With several cameras, each one fires as soon as it is ready
+ * FIXED: the fire siren button of a single camera in the app failed after 30 seconds with
+   "Camera did not come online"; the toolbar fire siren button did not wake the cameras up.
+   Both buttons now use the same logic as the Tasker/MacroDroid action
+
 V 1.10.2 - Take Picture action finally works
  * FIXED: the Take Picture action (live snapshot) never produced a picture. It now connects to
    the camera (battery cameras are woken up by the connection itself), waits for the live video

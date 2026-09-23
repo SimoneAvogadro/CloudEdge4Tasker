@@ -58,7 +58,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.meari.sdk.callback.IGetDeviceStatusCallback;
 
 public class CamManager {
 
@@ -211,22 +210,6 @@ public class CamManager {
         doSomethingOnCameras(cameras, sirenAlarmAction(1), perCameraCallback);
     }
 
-    public void fireAllSirenAlarms(List<CameraInfo> cameras) {
-        fireAllSirenAlarms(cameras, null);
-    }
-
-    public void fireAllSirenAlarms(List<CameraInfo> cameras, ICameraOperationCallback perCameraCallback) {
-        doSomethingOnCameras(cameras, new IDoSomething() {
-            @Override
-            public void doSomething(ISetDeviceParamsCallback then) {
-                MeariOpenApi.setIotConfig(MeariUser.getInstance().getCameraInfo(),
-                        MeariOpenApi.IOT_SIREN_SWITCH, 1, then);
-            }
-            @Override
-            public String description() { return "Fire siren alarm"; }
-        }, perCameraCallback);
-    }
-
     public void disableAllCameraAlarms(List<CameraInfo> cameras) {
         disableAllCameraAlarms(cameras, null);
     }
@@ -367,45 +350,6 @@ public class CamManager {
     }
 
     /**
-     * Wakes a battery camera and polls until it is online, then calls onSuccess().
-     * Polls every 3 s for up to 10 attempts (~30 s total).
-     * Calls onFailed(-15, msg) if the camera does not come online within the timeout.
-     */
-    private void wakeCamera(String snNum, ISetDeviceParamsCallback callback) {
-        MeariIotManager.getInstance().init();
-        MeariIotManager.getInstance().wakeDevice(snNum);
-        new Thread(() -> {
-            final int maxAttempts = 10;
-            final int intervalMs  = 3_000;
-            for (int i = 0; i < maxAttempts; i++) {
-                try { Thread.sleep(intervalMs); }
-                catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
-
-                CountDownLatch latch  = new CountDownLatch(1);
-                boolean[] online      = {false};
-                MeariIotManager.getInstance().getDeviceStatusGet(snNum,
-                    new IGetDeviceStatusCallback() {
-                        @Override public void onSuccess(boolean isOnline) {
-                            online[0] = isOnline;
-                            latch.countDown();
-                        }
-                        @Override public void onFailed(int code, String msg) {
-                            latch.countDown(); // treat HTTP error as "not yet online"
-                        }
-                    });
-                try { latch.await(5, TimeUnit.SECONDS); }
-                catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
-
-                Log.d("CamManager", "wakeCamera poll " + (i + 1) + "/" + maxAttempts
-                        + " sn=" + snNum + " online=" + online[0]);
-                if (online[0]) { callback.onSuccess(); return; }
-            }
-            callback.onFailed(-15, "Camera did not come online within "
-                    + (maxAttempts * intervalMs / 1000) + "s");
-        }).start();
-    }
-
-    /**
      * Live snapshot at the camera's highest resolution, saved to Pictures.
      * event.onSuccess receives the saved file path; every failure (login, unknown camera,
      * P2P, preview, snapshot, timeout) is reported through event.onFailed.
@@ -520,107 +464,33 @@ public class CamManager {
         });
     }
 
-    public void fireSirenAlarm(Context context, String camera, ISetDeviceParamsCallback event) {
-
-        loginAndInitList(new IDoSomething() {
-
-            @Override
-            public void doSomething(ISetDeviceParamsCallback then) {
-                // extract camera info
-                CameraInfo cameraInfo = null;
-                for (CameraInfo ci: deviceList) {
-                    if (camera.equals(ci.getDeviceID())) {
-                        cameraInfo = ci;
-                        break;
-                    }
-                }
-                if (cameraInfo==null) {
-                    event.onFailed(-1, "CameraID not found: "+camera);
-                    return;
-                }
-
-                MeariDeviceController deviceController = new MeariDeviceController();
-                deviceController.setCameraInfo(cameraInfo);
-                MeariUser.getInstance().setCameraInfo(cameraInfo);
-                MeariUser.getInstance().setController(deviceController);
-
-                // Pin the camera: the wake-up below is async, so the "current" camera on
-                // MeariUser may have moved on by the time the callback fires.
-                final CameraInfo sirenCamera = cameraInfo;
-
-                wakeCamera(cameraInfo.getSnNum(), new ISetDeviceParamsCallback() {
-                    @Override
-                    public void onSuccess() {
-                        MeariOpenApi.setIotConfig(sirenCamera, MeariOpenApi.IOT_SIREN_SWITCH, 1, new ISetDeviceParamsCallback() {
-                            @Override
-                            public void onSuccess() {
-                                event.onSuccess();
-                            }
-
-                            @Override
-                            public void onFailed(int i, String s) {
-                                event.onFailed(i, s);
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onFailed(int i, String s) {
-                        event.onFailed(i, s);
-                    }
-                });
-            }
-            @Override
-            public String description() {
-                return "Start camera alarm siren";
-            }
-
-        });
-
-    }
-
     /**
-     * Wake a list of cameras, wait once, then execute an action on each.
+     * Run a command on each camera as soon as it is awake (see {@link AwakeCameraAction}),
+     * all cameras in parallel. Shared by the Tasker actions and the in-app buttons.
+     * @param event optional: invoked once, after ALL cameras answered (see
+     *              {@link #reportWhenAllDone}); null for fire-and-forget with per-camera toasts
      */
-    private void wakeAndDoSomethingOnCameras(List<CameraInfo> cameras, IDoSomething whatToDo, ISetDeviceParamsCallback event) {
+    private void wakeAndRunOnCameras(List<CameraInfo> cameras, String description,
+                                     AwakeCameraAction.Command command, ISetDeviceParamsCallback event) {
         if (cameras.isEmpty()) {
             if (event != null) event.onFailed(-1, "No cameras matched");
             return;
         }
-        MeariIotManager.getInstance().init();
-        for (CameraInfo ci : cameras) {
-            MeariIotManager.getInstance().wakeDevice(ci.getSnNum());
+        ICameraOperationCallback perCamera = event == null ? null : reportWhenAllDone(cameras.size(), event);
+        for (CameraInfo cameraInfo : cameras) {
+            AwakeCameraAction.run(cameraInfo, description, command,
+                    perCameraReporter(cameraInfo, description, perCamera));
         }
-        try {
-            Thread.sleep(10 * 1000);
-        } catch (InterruptedException e) {
-            // ignore
-        }
-        doSomethingOnCamerasAndReport(cameras, whatToDo, event);
     }
 
     public void fireSirenOnCameras(List<CameraInfo> cameras, ISetDeviceParamsCallback event) {
-        wakeAndDoSomethingOnCameras(cameras, new IDoSomething() {
-            @Override
-            public void doSomething(ISetDeviceParamsCallback then) {
-                MeariOpenApi.setIotConfig(MeariUser.getInstance().getCameraInfo(),
-                        MeariOpenApi.IOT_SIREN_SWITCH, 1, then);
-            }
-            @Override
-            public String description() { return "Fire siren alarm"; }
-        }, event);
+        wakeAndRunOnCameras(cameras, "Fire siren alarm", (cam, cb) ->
+                MeariOpenApi.setIotConfig(cam, MeariOpenApi.IOT_SIREN_SWITCH, 1, cb), event);
     }
 
     public void turnOnLightOnCameras(List<CameraInfo> cameras, ISetDeviceParamsCallback event) {
-        wakeAndDoSomethingOnCameras(cameras, new IDoSomething() {
-            @Override
-            public void doSomething(ISetDeviceParamsCallback then) {
-                MeariOpenApi.setIotConfig(MeariUser.getInstance().getCameraInfo(),
-                        MeariOpenApi.IOT_LIGHT_SWITCH, 1, then);
-            }
-            @Override
-            public String description() { return "Turn on camera light"; }
-        }, event);
+        wakeAndRunOnCameras(cameras, "Turn on camera light", (cam, cb) ->
+                MeariOpenApi.setIotConfig(cam, MeariOpenApi.IOT_LIGHT_SWITCH, 1, cb), event);
     }
 
     // --- Selector-based methods: login + resolve + action ---
@@ -704,11 +574,18 @@ public class CamManager {
             event.onFailed(-1, "No cameras to operate on");
             return;
         }
-        final int total = cameras.size();
+        doSomethingOnCameras(cameras, whatToDo, reportWhenAllDone(cameras.size(), event));
+    }
+
+    /**
+     * Per-camera callback that invokes event exactly once, when all {@code total} cameras
+     * have answered: onSuccess() if every camera succeeded, onFailed() with a summary otherwise.
+     */
+    private static ICameraOperationCallback reportWhenAllDone(int total, ISetDeviceParamsCallback event) {
         final AtomicInteger remaining = new AtomicInteger(total);
         final AtomicInteger failed = new AtomicInteger(0);
         final AtomicReference<String> firstError = new AtomicReference<>();
-        doSomethingOnCameras(cameras, whatToDo, new ICameraOperationCallback() {
+        return new ICameraOperationCallback() {
             @Override
             public void onCameraSuccess(CameraInfo cameraInfo) {
                 complete();
@@ -731,7 +608,7 @@ public class CamManager {
                     }
                 }
             }
-        });
+        };
     }
 
     /**
@@ -762,25 +639,31 @@ public class CamManager {
     }
 
     private void doSomethingOnCamera(CameraInfo cameraInfo, IDoSomething whatToDo, ICameraOperationCallback perCameraCallback) {
-            whatToDo.doSomething(new ISetDeviceParamsCallback() {
-                @Override
-                public void onSuccess() {
-                    Log.d("CamManager", "--->camera " + cameraInfo.getDeviceName() + " camera configuration success");
-                    toast(whatToDo.description() + " on " + cameraInfo.getDeviceName());
-                    if (perCameraCallback != null) {
-                        perCameraCallback.onCameraSuccess(cameraInfo);
-                    }
-                }
+        whatToDo.doSomething(perCameraReporter(cameraInfo, whatToDo.description(), perCameraCallback));
+    }
 
-                @Override
-                public void onFailed(int i, String s) {
-                    Log.w("CamManager", "--->camera " + cameraInfo.getDeviceName() + " camera configuration failed " + s);
-                    toast("Failed on " + cameraInfo.getDeviceName() + " : " + s);
-                    if (perCameraCallback != null) {
-                        perCameraCallback.onCameraFailed(cameraInfo, i, s);
-                    }
+    /** Logs + toasts the outcome of an operation on one camera and forwards it to perCameraCallback (nullable). */
+    private ISetDeviceParamsCallback perCameraReporter(CameraInfo cameraInfo, String description,
+                                                       ICameraOperationCallback perCameraCallback) {
+        return new ISetDeviceParamsCallback() {
+            @Override
+            public void onSuccess() {
+                Log.d("CamManager", "--->camera " + cameraInfo.getDeviceName() + " camera configuration success");
+                toast(description + " on " + cameraInfo.getDeviceName());
+                if (perCameraCallback != null) {
+                    perCameraCallback.onCameraSuccess(cameraInfo);
                 }
-            });
+            }
+
+            @Override
+            public void onFailed(int i, String s) {
+                Log.w("CamManager", "--->camera " + cameraInfo.getDeviceName() + " camera configuration failed " + s);
+                toast("Failed on " + cameraInfo.getDeviceName() + " : " + s);
+                if (perCameraCallback != null) {
+                    perCameraCallback.onCameraFailed(cameraInfo, i, s);
+                }
+            }
+        };
     }
 
     /**

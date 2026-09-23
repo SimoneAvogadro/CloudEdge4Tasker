@@ -136,7 +136,8 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.De
                     .setPositiveButton("Yes", (dialog, which) -> {
                         holder.imgFireAlarm.setAlpha(0.5f);
                         Toast.makeText(context, "Firing siren on " + cameraInfo.getDeviceName() + "...", Toast.LENGTH_SHORT).show();
-                        CamManager.get(context).fireSirenAlarm(context, cameraInfo.getDeviceID(), new ISetDeviceParamsCallback() {
+                        // same path as the Tasker "Fire siren" action (a numeric selector is an exact camera ID)
+                        CamManager.get(context).fireSirenOnCameras(cameraInfo.getDeviceID(), new ISetDeviceParamsCallback() {
                             @Override
                             public void onSuccess() {
                                 holder.itemView.post(() -> {

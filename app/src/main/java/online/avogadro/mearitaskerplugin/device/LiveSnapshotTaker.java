@@ -36,9 +36,7 @@ import online.avogadro.mearitaskerplugin.CommonUtils;
  * Takes one live, full-resolution snapshot from a camera without any UI.
  *
  * Sequence (all SDK calls are issued on the main looper):
- * 1. P2P connect. For battery cameras the native connect itself sends the "awaken" request,
- *    so no REST wake-up is needed (the old /openapi/device/awaken + /status polling is
- *    rejected by the server since the 2026-09 auth change). Retried a few times.
+ * 1. P2P connect via {@link P2PSession} (with retries), which also wakes battery cameras.
  * 2. Preview on the highest-resolution bps2 stream (e.g. 102 = 2304x1296) with HARDWARE
  *    DECODING DISABLED for this controller: in soft mode the native ffmpeg decoder only
  *    memcpy's YUV into the renderer buffers, so an off-screen PPSGLSurfaceView is enough.
@@ -56,15 +54,10 @@ class LiveSnapshotTaker {
 
     /** Whole operation budget: must stay below the Tasker runner wait (55s) and host timeout (60s). */
     static final long TOTAL_TIMEOUT_MS = 50_000;
-    private static final int CONNECT_ATTEMPTS = 3;
-    private static final long CONNECT_RETRY_DELAY_MS = 3_000;
     /** Delay between the first decoded frame and the snapshot, lets auto-exposure settle. */
     private static final long SETTLE_AFTER_FIRST_FRAME_MS = 2_000;
     /** The native snapshot callback may precede the file being fully flushed. */
     private static final long FILE_WAIT_MS = 3_000;
-
-    /** A camera accepts one P2P session from us at a time: serialize snapshots. */
-    private static final AtomicBoolean IN_PROGRESS = new AtomicBoolean(false);
 
     private final Context context;
     private final CameraInfo camera;
@@ -73,10 +66,9 @@ class LiveSnapshotTaker {
     private final AtomicBoolean finished = new AtomicBoolean(false);
     private final long startedAt = SystemClock.elapsedRealtime();
 
+    private P2PSession session;
     private MeariDeviceController controller;
     private PPSGLSurfaceView surface;
-    private boolean connected = false;
-    private boolean previewing = false;
     private File cacheFile;
 
     private LiveSnapshotTaker(Context context, CameraInfo camera, MeariDeviceListener listener) {
@@ -86,10 +78,6 @@ class LiveSnapshotTaker {
     }
 
     static void take(Context context, CameraInfo camera, MeariDeviceListener listener) {
-        if (!IN_PROGRESS.compareAndSet(false, true)) {
-            listener.onFailed("Another live snapshot is already in progress");
-            return;
-        }
         LiveSnapshotTaker taker = new LiveSnapshotTaker(context, camera, listener);
         taker.main.post(taker::start);
     }
@@ -99,10 +87,16 @@ class LiveSnapshotTaker {
     }
 
     private void start() {
+        session = P2PSession.open(camera, TAG);
+        if (session == null) {
+            // not fail(): the active session belongs to someone else and must not be closed
+            finished.set(true);
+            listener.onFailed("The camera is busy with another operation from this app, retry later");
+            return;
+        }
         main.postDelayed(() -> fail("Timeout after " + TOTAL_TIMEOUT_MS / 1000 + "s"), TOTAL_TIMEOUT_MS);
         try {
-            controller = new MeariDeviceController();
-            controller.setCameraInfo(camera);
+            controller = session.controller();
             // Per-controller switch (not the global PPSMediaCodec flag, which the in-app live
             // view relies on): forces the native ffmpeg decoder, required by the off-screen
             // rendering and by the native JPEG snapshot.
@@ -116,35 +110,21 @@ class LiveSnapshotTaker {
             return;
         }
         log("start: sn=" + camera.getSnNum() + " bps2=" + camera.getBps2() + " vst=" + camera.getVst());
-        connect(1);
+        connect();
     }
 
-    private void connect(int attempt) {
-        if (finished.get()) return;
-        log("connect attempt " + attempt + "/" + CONNECT_ATTEMPTS);
-        controller.startConnect(new MeariDeviceListener() {
+    private void connect() {
+        session.connect(new P2PSession.Listener() {
             @Override
-            public void onSuccess(String msg) {
-                main.post(() -> {
-                    if (finished.get()) return;
-                    connected = true;
-                    log("connected: " + msg);
-                    startPreview();
-                });
+            public void onConnected(P2PSession s) {
+                if (finished.get()) return;
+                log("connected");
+                startPreview();
             }
 
             @Override
-            public void onFailed(String msg) {
-                main.post(() -> {
-                    if (finished.get()) return;
-                    log("connect failed: " + msg);
-                    if (attempt >= CONNECT_ATTEMPTS) {
-                        fail("P2P connection failed: " + msg);
-                        return;
-                    }
-                    controller.stopConnect(NOOP);
-                    main.postDelayed(() -> connect(attempt + 1), CONNECT_RETRY_DELAY_MS);
-                });
+            public void onFailed(String message) {
+                fail(message);
             }
         });
     }
@@ -152,7 +132,7 @@ class LiveSnapshotTaker {
     private void startPreview() {
         int streamId = Integer.parseInt(CommonUtils.getMaxResolutionStreamId(camera));
         log("startPreview on stream " + streamId);
-        previewing = true;
+        session.setPreviewing(true);
         controller.startPreview(surface, streamId, new MeariDeviceListener() {
             @Override
             public void onSuccess(String msg) {
@@ -299,22 +279,8 @@ class LiveSnapshotTaker {
     /** Main looper only. */
     private void cleanup() {
         main.removeCallbacksAndMessages(null);
-        if (controller != null) {
-            try {
-                if (previewing) controller.stopPreview(NOOP);
-                if (connected || previewing) controller.stopConnect(NOOP);
-            } catch (Throwable t) {
-                Log.w(TAG, "cleanup", t);
-            }
-        }
+        if (session != null) session.close();
         if (cacheFile != null) cacheFile.delete();
-        IN_PROGRESS.set(false);
         log("cleanup done");
     }
-
-    // The SDK invokes these callbacks without null checks
-    private static final MeariDeviceListener NOOP = new MeariDeviceListener() {
-        @Override public void onSuccess(String msg) {}
-        @Override public void onFailed(String msg) {}
-    };
 }

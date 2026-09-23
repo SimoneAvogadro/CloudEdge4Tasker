@@ -222,7 +222,8 @@ public class DeviceListActivity extends AppCompatActivity {
                     .setPositiveButton("Yes", (dialog, which) -> {
                         Toast.makeText(DeviceListActivity.this, "Firing siren alarms...", Toast.LENGTH_LONG).show();
                         CamManager cm = CamManager.get(DeviceListActivity.this);
-                        cm.fireAllSirenAlarms(new ArrayList<>(filteredList), null);
+                        // same path as the Tasker "Fire siren" action; per-camera toasts report the outcome
+                        cm.fireSirenOnCameras(new ArrayList<>(filteredList), null);
                     })
                     .setNegativeButton("Cancel", null)
                     .show();

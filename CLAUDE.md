@@ -68,6 +68,8 @@ online.avogadro.mearitaskerplugin/
 │   ├── DeviceListAdapter.java    # RecyclerView adapter with per-camera controls
 │   ├── DeviceMonitorActivity.java # Live preview/playback
 │   ├── LiveSnapshotTaker.java    # Headless live snapshot (Take Picture action)
+│   ├── P2PSession.java           # One P2P connection with retries (also wakes battery cams)
+│   ├── AwakeCameraAction.java    # Wake via P2P, then send a command (siren, light)
 │   ├── DeviceSettingActivity.java # Per-camera settings
 │   ├── DeviceCloudPlayActivity.java # Cloud storage playback
 │   ├── AddDeviceActivity.java    # QR code onboarding
@@ -123,17 +125,16 @@ Central singleton (`CamManager.get(context)`) for all camera operations.
 - `disableAllCameras(List<CameraInfo>)` - Disable PIR detection
 - `enableAllCameraAlarms(List<CameraInfo>)` - Enable siren alarm
 - `disableAllCameraAlarms(List<CameraInfo>)` - Disable siren alarm
-- `fireAllSirenAlarms(List<CameraInfo>)` - Fire sirens
 
 **Selector-based operations** (login + resolve selector via `CameraResolver` + action):
 - `enableCamerasPIR(selector, callback)` - Enable PIR detection
 - `disableCamerasPIR(selector, callback)` - Disable PIR detection
-- `fireSirenOnCameras(selector, callback)` - Fire siren (10s wake-up)
-- `turnOnLightOnCameras(selector, callback)` - Turn on light (10s wake-up)
+- `fireSirenOnCameras(selector, callback)` - Fire siren (P2P wake-up)
+- `turnOnLightOnCameras(selector, callback)` - Turn on light (P2P wake-up)
 
 **List-based operations** (operate on a pre-resolved list of cameras):
-- `fireSirenOnCameras(List<CameraInfo>, callback)` - Fire siren via `wakeAndDoSomethingOnCameras`
-- `turnOnLightOnCameras(List<CameraInfo>, callback)` - Turn on light via `wakeAndDoSomethingOnCameras`
+- `fireSirenOnCameras(List<CameraInfo>, callback)` - Fire siren via `wakeAndRunOnCameras` (callback nullable: null = per-camera toasts only)
+- `turnOnLightOnCameras(List<CameraInfo>, callback)` - Turn on light via `wakeAndRunOnCameras`
 
 **No-arg bulk operations** (login first, then operate on all cached cameras):
 - `enableAllCameraAlarms()`, `disableAllCameraAlarms()`
@@ -143,7 +144,6 @@ Central singleton (`CamManager.get(context)`) for all camera operations.
 - `disableSingleCameraPIR(context, cameraID, callback)`
 - `enableSingleCameraAlarm(context, cameraID, callback)`
 - `disableSingleCameraAlarm(context, cameraID, callback)`
-- `fireSirenAlarm(context, cameraID, callback)` - Includes 10s wake-up delay
 
 **Image/Media:**
 - `takeAPicture(context, cameraID, listener)` - Live snapshot (50s budget), delegated to `LiveSnapshotTaker` (device/): P2P connect (the native connect wakes battery cameras by itself, no REST wake), soft-decoded off-screen preview on the highest-resolution bps2 stream (`CommonUtils.getMaxResolutionStreamId`), 2s settle, native JPEG snapshot to cache, then copied to Pictures via MediaStore; returns the file path
@@ -174,8 +174,8 @@ Helpers must implement `HelperHolder` interface (defines `finishForTasker()` and
 | Download Alert Image | `DownloadLastCameraImageActionHelper` | `ActivityConfigDownloadLastCameraImageAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Download latest alert image (30s timeout, single camera only) |
 | Download Alert Video | `DownloadLastCameraVideoActionHelper` | `ActivityConfigDownloadLastCameraVideoAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraVideoOutput` | Download latest alert video, cloud-hosted (55s timeout, single camera only) |
 | Take Picture | `TakePictureActionHelper` | `ActivityConfigTakePictureAction` | `DownloadLastCameraImageInput` → `DownloadLastCameraImageOutput` | Capture live snapshot at full resolution (50s budget / 55s runner wait, single camera only) |
-| Fire Siren | `TriggerCameraSirenActionHelper` | `ActivityConfigTriggerSirenAction` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Fire siren (supports selectors, 10s wake-up) |
-| Turn On Light | `TurnOnLightActionHelper` | `ActivityConfigTurnOnLightAction` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Turn on camera light (supports selectors, 10s wake-up) |
+| Fire Siren | `TriggerCameraSirenActionHelper` | `ActivityConfigTriggerSirenAction` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Fire siren (supports selectors, P2P wake-up) |
+| Turn On Light | `TurnOnLightActionHelper` | `ActivityConfigTurnOnLightAction` | `DownloadLastCameraImageInput` → `CameraActionOutput` | Turn on camera light (supports selectors, P2P wake-up) |
 
 **Input/Output classes:**
 - `DownloadLastCameraImageInput` - Fields: `cameraID` (String), `cameraName` (String)
@@ -211,7 +211,7 @@ Main screen showing all cameras in a RecyclerView.
 **Per-camera inline controls** (in DeviceListAdapter):
 - PIR toggle icon (camera_play / camera_pause) - clickable, toggles motion detection
 - Siren toggle icon (enable_siren / disable_siren) - clickable, toggles siren alarm
-- Fire siren button (play_alarm) - fires siren on single camera with confirmation dialog
+- Fire siren button (play_alarm) - fires siren on single camera with confirmation dialog (same `fireSirenOnCameras(selector)` path as the Tasker action)
 - Visual feedback: icons update per-camera as operations complete via `ICameraOperationCallback`
 
 **TabLayout filtering:**
@@ -278,7 +278,7 @@ Selector-based Tasker actions follow:
 4. Set each camera as current device
 5. Execute operation via Meari SDK
 
-For wake-up operations (siren, light), `wakeAndDoSomethingOnCameras()` wakes all matched cameras, waits 10s once, then executes the action on each.
+For wake-up operations (siren, light), `wakeAndRunOnCameras()` runs an `AwakeCameraAction` per camera in parallel: it opens a `P2PSession` (the native connect wakes the camera and succeeds only once it answers, ~3s), sends the command as soon as that camera is awake, then closes the session. If P2P fails or exceeds 20s the command is sent anyway; if this app already holds a session to the camera it is sent immediately. The Tasker actions and both in-app fire-siren buttons (toolbar and per-camera) share this path. No fixed sleeps, no REST wake/status polling (rejected by the server since 2026-09).
 
 ### Async Operations
 - EVERY Tasker action MUST declare a real `@TaskerOutputObject` output class (see `CameraActionOutput`): MacroDroid never completes plugin actions whose output type is `Unit` (no output variables) — the macro hangs forever on the action. Actions with real outputs (e.g. Download Alert Image) always worked. Do NOT use the `NoOutput` runner/config-helper variants.
@@ -289,7 +289,7 @@ For wake-up operations (siren, light), `wakeAndDoSomethingOnCameras()` wakes all
 - Toasts in CamManager go through `toast()` (main-looper Handler): SDK callbacks can arrive on native non-Looper threads where `Toast.makeText` throws
 - Most camera operations use callbacks (`ISetDeviceParamsCallback`)
 - Image downloads use `AsyncTask` pattern
-- Device wake-up includes hardcoded 10-second delays (fireSirenOnCameras, turnOnLightOnCameras)
+- Device wake-up (siren, light, live snapshot) goes through `P2PSession`: one session per camera at a time (`P2PSession.open` returns null if busy), main looper only
 - Image download timeouts: 30s for alert images, 55s for alert videos, 55s for live pictures
 
 ## Security Considerations
@@ -340,6 +340,6 @@ Two separate stream families exist for live preview:
 ## Important Limitations
 
 - Single login session: CloudEdge doesn't allow concurrent logins
-- Wake-up delays: Battery cameras need time to come online (adaptive polling, max 30s; live snapshot relies on the P2P connect's own wake-up instead)
+- Wake-up delays: Battery cameras need a few seconds to come online; the P2P connect waits for them (up to 3 attempts)
 - Image decryption: Uses proprietary MeariMediaUtil.decodePic()
 - Device list cache: 120-second refresh interval
